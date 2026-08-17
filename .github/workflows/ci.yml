@@ -62,16 +62,11 @@ jobs:
       - name: Charts match the data they are generated from
         run: npm run check:charts
 
-      - name: Every recorded run still grades the same under the current rubric
-        # Grading is deterministic and the raw streams are committed, so a rubric edit
-        # that would silently move a published number fails here instead of shipping.
-        run: |
-          out="$(npm run --silent check:grades)"
-          echo "$out"
-          if echo "$out" | grep -q '^CHANGED'; then
-            echo "::error::a stored batch grades differently than its summary says - run 'npm run regrade -- --write'"
-            exit 1
-          fi
+      - name: Every published run still grades the same under the current rubric
+        # Grading is deterministic and every raw stream is committed, so a rubric edit that
+        # would silently move a published number fails here instead of shipping. The script
+        # exits non-zero by itself when a grade moves; no output parsing needed.
+        run: npm run check:grades
 
       - name: Rule variants differ from the shipped body in exactly one line
         run: |

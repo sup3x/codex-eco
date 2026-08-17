@@ -13,11 +13,14 @@ import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { join, resolve, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseEvents, summarizeRun } from "../bench/lib/codex.mjs";
+import { readManifest } from "../bench/lib/published.mjs";
+import { RAW_DIR, BENCH_DIR } from "../bench/lib/io.mjs";
 import { gradeAnswer, summarizeGrades } from "../bench/lib/grade.mjs";
 import { renderSummary } from "../bench/bench.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RESULTS = join(REPO, "bench", "results");
+const MANIFEST_FILE = join(BENCH_DIR, "manifest.json");
 
 /** The answer the rubric grades is turn 1's, in single- and multi-turn runs alike. */
 function firstTurnAnswer(rawDir, run) {
@@ -78,12 +81,61 @@ export function regradeBatch(tag, { write = false } = {}) {
   return { tag, changes, arms: s.arms.map((a) => ({ name: a.name, grades: a.grades })) };
 }
 
+/**
+ * Re-grade the PUBLISHED record: for every run in bench/manifest.json, grade its committed
+ * raw stream with the current rubric and compare with the grade the manifest stores.
+ *
+ * This is the check that matters in CI, and the one that works there: bench/results/ is a
+ * working directory and is gitignored, so a clean checkout has only the published record.
+ * A rubric edit that would move a published number fails here.
+ */
+export function regradePublished({ write = false } = {}) {
+  const manifest = readManifest();
+  const entries = Object.entries(manifest.runs ?? {}).filter(([, r]) => r.grade && r.rubric);
+  const changes = [];
+  for (const [id, r] of entries) {
+    const file = join(RAW_DIR, (r.files ?? [`${id}.jsonl`])[0]);
+    if (!existsSync(file)) continue;
+    const answer = summarizeRun(parseEvents(readFileSync(file, "utf8"))).result;
+    if (!answer) continue;
+    const grade = gradeAnswer(r.rubric, answer);
+    for (const [criterion, hit] of Object.entries(grade.criteria)) {
+      const before = r.grade.criteria?.[criterion];
+      if (before !== hit) changes.push({ id, study: r.study, arm: r.arm, criterion, before, after: hit });
+    }
+    if (write) manifest.runs[id].grade = grade;
+  }
+  if (write && changes.length) writeFileSync(MANIFEST_FILE, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  return { runs: entries.length, changes };
+}
+
 function main() {
   const write = process.argv.includes("--write");
-  if (!existsSync(RESULTS)) {
-    console.error("no bench/results directory");
-    return 2;
+
+  const pub = regradePublished({ write });
+  if (!pub.runs) {
+    console.log("published record: no graded runs in bench/manifest.json");
+  } else if (!pub.changes.length) {
+    console.log(`published record: ${pub.runs} graded runs, all still grade the same`);
+  } else {
+    // Grouped by study and criterion, because the per-arm pattern is what tells you whether
+    // a rubric change was a fix or a choice.
+    const byKey = new Map();
+    for (const c of pub.changes) {
+      const key = `${c.study} ${c.arm} ${c.criterion}`;
+      byKey.set(key, (byKey.get(key) ?? 0) + 1);
+    }
+    console.log(`CHANGED    published record: ${pub.changes.length} run-criterion result(s) moved`);
+    for (const [key, n] of [...byKey].sort()) console.log(`    ${key}: ${n} run(s)`);
   }
+
+  if (!existsSync(RESULTS)) {
+    console.log(
+      "\nno bench/results directory - nothing to re-summarise locally, which is normal in a clean checkout",
+    );
+    return pub.changes.length && !write ? 1 : 0;
+  }
+
   const tags = readdirSync(RESULTS).filter((t) => existsSync(join(RESULTS, t, "summary.json")));
   let total = 0;
   for (const tag of tags) {
@@ -105,9 +157,11 @@ function main() {
       ? `\n${total} criterion result(s) moved${write ? " and were written back" : " (report only; pass --write to apply)"}.` +
           `\nRead the per-arm lines above before believing any of them: a rubric change that only ever` +
           `\nmoves the treatment arm is a rubric change that was chosen rather than fixed.`
-      : "\nNothing moved: every stored run grades the same under the current rubric.",
+      : "\nNothing moved in the working batches either: every stored run grades the same under the current rubric.",
   );
-  return 0;
+  // A moved published grade is a failure unless the caller asked to write it back, so CI
+  // does not need to parse this output to notice.
+  return pub.changes.length && !write ? 1 : 0;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
