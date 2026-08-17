@@ -58,11 +58,14 @@ export function renderCard(data) {
   // Fixed 1280x640 with no scrolling, so every string that can grow with the data is
   // length-checked below rather than allowed to push content off the card.
   const f = data.facts ?? {};
-  const minus = (x) => `&minus;${Math.abs(x).toFixed(0)}%`;
+  // Carry the sign. An earlier version wrote `&minus;` in front of Math.abs(), which
+  // rendered the +34.1% batch - the one where the block came out WORSE - as "-34%" on the
+  // card. A picture that turns a bad result into a good one is worse than no picture.
+  const signed = (x) => `${x <= 0 ? "&minus;" : "+"}${Math.abs(x).toFixed(0)}%`;
   const measured = Boolean(f.prefix?.aggressive);
 
   const headline = measured
-    ? `${minus(f.prefix.safe.pct)} to ${minus(f.prefix.aggressive.pct)} before you type`
+    ? `${signed(f.prefix.safe.pct)} to ${signed(f.prefix.aggressive.pct)} before you type`
     : "Measured, or not claimed";
   const sub = measured
     ? `the ${f.prefix.baseline.toLocaleString("en-US")} characters of instructions Codex sends on every ` +
@@ -72,25 +75,26 @@ export function renderCard(data) {
   const facts = [];
   if (f.thread?.costDelta != null) {
     facts.push([
-      `${minus(f.thread.costDelta)} cost per thread`,
+      `${signed(f.thread.costDelta)} cost per thread`,
       `rules on, ${f.thread.model}, n=${f.thread.n}, p=${f.thread.p.toFixed(3)}`,
     ]);
   }
   if (f.thread?.outputDelta != null) {
-    facts.push([`${minus(f.thread.outputDelta)} output tokens`, `and the preamble turn goes to zero`]);
+    facts.push([`${signed(f.thread.outputDelta)} output tokens`, `and the preamble turn goes to zero`]);
   }
-  if (f.efforts) {
-    facts.push([
-      `${f.efforts.sign.sameDirection}/${f.efforts.sign.n} effort levels`,
-      `same direction, ${minus(f.efforts.worst)} to ${minus(f.efforts.best)}`,
-    ]);
-  }
-  if (f.models) {
-    facts.push([
-      `${f.models.sign.sameDirection}/${f.models.sign.n} models`,
-      `same direction, ${minus(f.models.worst)} to ${minus(f.models.best)}`,
-    ]);
-  }
+  // "N/M ... same direction" is only true when N === M. When one batch disagreed, the card
+  // says so rather than quietly rounding the story up.
+  const spread = (g, unit) => {
+    const unanimous = g.sign.sameDirection === g.sign.n;
+    return [
+      `${g.sign.sameDirection}/${g.sign.n} ${unit}`,
+      unanimous
+        ? `same direction, ${signed(g.worst)} to ${signed(g.best)}`
+        : `one went the other way &mdash; ${signed(g.worst)} to ${signed(g.best)}`,
+    ];
+  };
+  if (f.efforts) facts.push(spread(f.efforts, "effort batches"));
+  if (f.models) facts.push(spread(f.models, "models"));
   const factHtml = facts
     .map(([big, small]) => `<div class="fact"><b>${big}</b><span>${small}</span></div>`)
     .join("\n      ");
