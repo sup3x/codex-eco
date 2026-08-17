@@ -336,6 +336,44 @@ function checkProfiles(root) {
   }
 }
 
+// Every image a README points at must exist in the repository, and the URL must name this
+// repository and branch. The READMEs use absolute raw URLs so the markdown still renders
+// when it is copied out of the repo, which means a typo or a renamed asset cannot be caught
+// by "the file is next to the markdown" - only by checking the URL against the tree.
+const RAW_PREFIX = "https://raw.githubusercontent.com/sup3x/codex-eco/main/";
+
+function checkReadmeImages(root) {
+  for (const file of ["README.md", "README.tr.md"]) {
+    const path = join(root, file);
+    if (!existsSync(path)) {
+      fail(file, "missing");
+      continue;
+    }
+    const text = readFileSync(path, "utf8");
+    let found = 0;
+    for (const m of text.matchAll(/!\[[^\]]*\]\(([^)\s]+)\)/g)) {
+      const url = m[1];
+      if (url.startsWith("https://img.shields.io/")) continue; // badges are third-party
+      found++;
+      if (!url.startsWith(RAW_PREFIX)) {
+        fail(file, `image "${url}" is not an absolute ${RAW_PREFIX}... url, so it breaks when the markdown is copied`);
+        continue;
+      }
+      const rel = url.slice(RAW_PREFIX.length);
+      if (!existsSync(join(root, rel))) fail(file, `image "${url}" points at ${rel}, which is not in the repository`);
+    }
+    // Also check the link targets wrapping those images, which are the SVG sources.
+    for (const m of text.matchAll(/\[!\[[^\]]*\]\([^)]+\)\]\(([^)\s]+)\)/g)) {
+      const url = m[1];
+      if (!url.startsWith(RAW_PREFIX)) continue;
+      const rel = url.slice(RAW_PREFIX.length);
+      if (!existsSync(join(root, rel))) fail(file, `image link target ${rel} is not in the repository`);
+    }
+    if (!found) notes.push(`${file}: no images found, which is suspicious for this project`);
+    else notes.push(`${file}: ${found} image(s), all present and absolute`);
+  }
+}
+
 /** The plugin's own version must match package.json, or an update never reaches users. */
 function checkVersionSync(root) {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -363,6 +401,7 @@ function main() {
   checkMarketplace(REPO);
   checkRuleBlocks(REPO);
   checkProfiles(REPO);
+  checkReadmeImages(REPO);
   checkVersionSync(REPO);
 
   for (const n of notes) console.log(`note  ${n}`);
