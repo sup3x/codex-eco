@@ -26,7 +26,7 @@
     "build:assets": "node scripts/build-assets.mjs",
     "check:assets": "node scripts/build-assets.mjs --check",
     "audit": "node scripts/prefix-audit.mjs",
-    "build:charts": "node scripts/build-charts.mjs",
+    "build:charts": "node scripts/build-charts.mjs --png",
     "check:charts": "node scripts/build-charts.mjs --check",
     "snapshot:prefix": "node scripts/snapshot-prefix.mjs",
     "regrade": "node scripts/regrade.mjs",

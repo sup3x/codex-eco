@@ -10,7 +10,7 @@ Works in **Codex CLI** and in **Codex inside the ChatGPT desktop app**. One inst
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Codex CLI](https://img.shields.io/badge/Codex%20CLI-0.147-black)](https://developers.openai.com/codex) [![Validated](https://img.shields.io/badge/validated%20by-Codex's%20own%20validators-brightgreen)](#how-every-claim-here-was-checked)
 
-![codex-eco](assets/social-preview.png)
+![codex-eco](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/social-preview.png)
 
 ## Quickstart
 
@@ -55,7 +55,7 @@ Invoking a skill costs one extra shell round trip, for a reason worth understand
 
 This is the project's main finding, and it cost a retraction to learn.
 
-![Cost of one three-turn thread, three ways of delivering the same rules](assets/surfaces.svg)
+[![Cost of one three-turn thread, three ways of delivering the same rules](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/surfaces.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/surfaces.svg)
 Codex publishes a skill to the model as **one catalogue line** — name, description, and a path:
 
 ```
@@ -111,7 +111,7 @@ part this repository argues about at length, in the open, including where they c
 
 The most useful thing in this repository costs nothing to run and makes no model call:
 
-![What a Codex session costs before you type a character](assets/prefix.svg)
+[![What a Codex session costs before you type a character](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/prefix.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/prefix.svg)
 ```bash
 node scripts/prefix-audit.mjs
 ```
@@ -173,7 +173,7 @@ Every arm found both planted bugs in every run, so cheapness decides. The short 
 
 ### 3. Replicated at every reasoning effort
 
-![Replication across effort levels](assets/efforts.svg)
+[![Replication across effort levels](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/efforts.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/efforts.svg)
 
 The shipped block was run against no rules in 7 independent batches on `gpt-5.6-terra` (n=3 per arm): **6/7 batches moved the same way**, two-sided sign test p = 0.125. Across the 5 levels whose batches agree, the effect ran from **−7.0% to −25.1%**; `none` is unresolved and is described below. Both planted bugs were found at every level in every run. The published number is that range, not any one batch.
 
@@ -193,7 +193,7 @@ The trend is clear and its mechanism is plausible: the higher the effort, the lo
 
 ### 4. And on every model
 
-![Replication across models](assets/models.svg)
+[![Replication across models](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/models.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/models.svg)
 
 | Model | n | cost | output | cmds | preamble | both bugs |
 |---|---:|---:|---:|---:|---:|---|

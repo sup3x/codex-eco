@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Codex CLI](https://img.shields.io/badge/Codex%20CLI-0.147-black)](https://developers.openai.com/codex) [![Doğrulandı](https://img.shields.io/badge/do%C4%9Frulayan-Codex'in%20kendi%20do%C4%9Frulay%C4%B1c%C4%B1lar%C4%B1-brightgreen)](#buradaki-her-iddia-nasıl-doğrulandı)
 
-![codex-eco](assets/social-preview.png)
+![codex-eco](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/social-preview.png)
 
 ## Hızlı başlangıç
 
@@ -55,7 +55,7 @@ Bir skill çağırmak fazladan bir shell turuna mal olur; buna güvenmeden önce
 
 Bu projenin ana bulgusu bu, ve öğrenmesi bir geri çekmeye mal oldu.
 
-![Aynı kuralları taşımanın üç yolu, üç turluk bir konuşmanın maliyeti](assets/surfaces.tr.svg)
+[![Aynı kuralları taşımanın üç yolu, üç turluk bir konuşmanın maliyeti](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/surfaces.tr.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/surfaces.tr.svg)
 Codex bir skill'i modele **tek bir katalog satırı** olarak yayınlar — ad, açıklama ve bir yol:
 
 ```
@@ -95,7 +95,7 @@ Denetim, kendi makinende bir saniyede doğrulayabildiğin kısım. Davranış sa
 
 Bu depodaki en faydalı şey çalıştırmak bedava ve hiçbir model çağrısı yapmıyor:
 
-![Bir karakter yazmadan önce Codex oturumunun maliyeti](assets/prefix.tr.svg)
+[![Bir karakter yazmadan önce Codex oturumunun maliyeti](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/prefix.tr.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/prefix.tr.svg)
 ```bash
 node scripts/prefix-audit.mjs
 ```
@@ -157,7 +157,7 @@ Her kol, her koşuda iki ekili hatayı da buldu; karar bu yüzden ucuzluğa kal�
 
 ### 3. Her reasoning effort seviyesinde tekrar
 
-![Effort seviyelerine göre tekrar](assets/efforts.tr.svg)
+[![Effort seviyelerine göre tekrar](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/efforts.tr.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/efforts.tr.svg)
 
 Dağıtılan blok, `gpt-5.6-terra` üzerinde 7 bağımsız partide sınandı (kol başına n=3); **6/7 parti aynı yöne** gitti, iki yönlü işaret testi p = 0.125. Partilerinin birbirini tuttuğu 5 seviyede etki **−7.0% ile −25.1%** arasında; `none` çözülmedi ve aşağıda ayrıca anlatılıyor. İki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.
 
@@ -177,7 +177,7 @@ Eğilim açık ve mekanizması makul: effort yükseldikçe temel çıktı da uzu
 
 ### 4. Ve her modelde
 
-![Modellere göre tekrar](assets/models.tr.svg)
+[![Modellere göre tekrar](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/models.tr.png)](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/models.tr.svg)
 
 | Model | n | maliyet | çıktı | komut | önsöz | iki hata da |
 |---|---:|---:|---:|---:|---:|---|

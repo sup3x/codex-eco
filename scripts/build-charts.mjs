@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Builds the README's charts, in English and Turkish, from recorded data only.
 //
-//   assets/prefix.svg     <- assets/data/prefix.json      (a dated prompt-input render)
-//   assets/surfaces.svg   <- bench/results/thread-terra/   (the delivery-mechanism study)
-//   assets/efforts.svg    <- bench/results/eff-*/          (the effort replication)
+//   assets/prefix.svg     <- assets/data/prefix.json   (a dated prompt-input render)
+//   assets/surfaces.svg   <- study mechanism-thread     (the delivery-mechanism study)
+//   assets/efforts.svg    <- studies effort-*           (the effort replication)
+//   assets/models.svg     <- studies model-*            (the model replication)
 //   assets/*.tr.svg       <- the same data, Turkish strings
+//   assets/*.png          <- 2x rasterisations, with --png; the READMEs link to these
 //
 // Nothing here may hardcode a measurement: every number is read from a file under
 // version control, and `--check` re-renders and fails if a committed SVG differs. The
@@ -14,6 +16,7 @@
 //   node scripts/build-charts.mjs
 //   node scripts/build-charts.mjs --check
 import { existsSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join, resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { barChart, emptyChart } from "./lib/chart.mjs";
@@ -30,6 +33,13 @@ const THREAD_STUDY = "mechanism-thread";
 const EFFORT_ORDER = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 const readJson = (p) => JSON.parse(readFileSync(p, "utf8"));
+
+// Images are referenced by ABSOLUTE url and as PNG. A relative path breaks the moment the
+// markdown is copied out of the repo - a forum post, a gist, a package page - and this
+// project's README is meant to be quotable. The PNG links through to the SVG source for
+// anyone who wants the crisp one.
+const RAW_BASE = "https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/";
+const figure = (alt, name) => `[![${alt}](${RAW_BASE}${name}.png)](${RAW_BASE}${name}.svg)`;
 
 /** bench/headline.json decides which studies may produce a published claim. */
 function allowedStudies() {
@@ -692,7 +702,7 @@ export function renderResults(lang = "en") {
     lines.push(
       tr ? "### 3. Her reasoning effort seviyesinde tekrar" : "### 3. Replicated at every reasoning effort",
       "",
-      `![${tr ? "Effort seviyelerine göre tekrar" : "Replication across effort levels"}](assets/efforts${tr ? ".tr" : ""}.svg)`,
+      figure(tr ? "Effort seviyelerine göre tekrar" : "Replication across effort levels", `efforts${tr ? ".tr" : ""}`),
       "",
       tr
         ? `Dağıtılan blok, \`${efforts[0].model}\` üzerinde ${efforts.length} bağımsız partide sınandı (kol başına n=${efforts[0].n}); **${sign.sameDirection}/${sign.n} parti aynı yöne** gitti, iki yönlü işaret testi p = ${sign.p.toFixed(3)}. Partilerinin birbirini tuttuğu ${agreeing.length} seviyede etki **${plain(hi)} ile ${plain(lo)}** arasında${unresolvedNames.length ? `; ${unresolvedNames.join(", ")} çözülmedi ve aşağıda ayrıca anlatılıyor` : ""}. İki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.`
@@ -762,7 +772,7 @@ export function renderResults(lang = "en") {
     lines.push(
       tr ? "### 4. Ve her modelde" : "### 4. And on every model",
       "",
-      `![${tr ? "Modellere göre tekrar" : "Replication across models"}](assets/models${tr ? ".tr" : ""}.svg)`,
+      figure(tr ? "Modellere göre tekrar" : "Replication across models", `models${tr ? ".tr" : ""}`),
       "",
       tr ? "| Model | n | maliyet | çıktı | komut | önsöz | iki hata da |" : "| Model | n | cost | output | cmds | preamble | both bugs |",
       "|---|---:|---:|---:|---:|---:|---|",
@@ -818,6 +828,59 @@ const README_TARGETS = [
   { out: join(REPO, "README.tr.md"), lang: "tr" },
 ];
 
+const CHROME_CANDIDATES = [
+  "C:/Program Files/Google/Chrome/Application/chrome.exe",
+  "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium",
+];
+
+/**
+ * Rasterise each committed SVG to a 2x PNG beside it.
+ *
+ * The READMEs reference the PNGs, not the SVGs, and by absolute URL. Two reasons, both
+ * about where the text ends up rather than about the pictures: a relative path breaks the
+ * moment the markdown is copied anywhere other than the repo - a forum post, a gist, a
+ * package page - and raw.githubusercontent's content type for `.svg` is not something this
+ * project can verify from here, while a PNG renders everywhere without that question. The
+ * SVGs stay in the repo as the crisp source and the PNG links point at them.
+ */
+function rasteriseCharts() {
+  const chrome = CHROME_CANDIDATES.find((c) => existsSync(c));
+  if (!chrome) {
+    console.log("skipped PNG: no Chrome/Chromium found - the SVGs are still generated");
+    return [];
+  }
+  const written = [];
+  for (const t of TARGETS) {
+    if (!existsSync(t.out)) continue;
+    const head = readFileSync(t.out, "utf8").slice(0, 400);
+    const w = Number(head.match(/width="(\d+)"/)?.[1]);
+    const h = Number(head.match(/height="(\d+)"/)?.[1]);
+    if (!w || !h) throw new Error(`${t.out}: cannot read width/height from the SVG header`);
+    const png = t.out.replace(/\.svg$/, ".png");
+    execFileSync(
+      chrome,
+      [
+        "--headless",
+        "--disable-gpu",
+        "--hide-scrollbars",
+        // 2x so the charts stay legible when a README scales them down.
+        "--force-device-scale-factor=2",
+        `--window-size=${w},${h}`,
+        `--screenshot=${png}`,
+        pathToFileURL(t.out).href,
+      ],
+      { stdio: "ignore" },
+    );
+    if (!existsSync(png)) throw new Error(`chrome did not write ${png}`);
+    written.push(png);
+    console.log(`wrote    ${png.replace(REPO, ".")} (${readFileSync(png).length} bytes, ${w * 2}x${h * 2})`);
+  }
+  return written;
+}
+
 function main() {
   const check = process.argv.includes("--check");
   let stale = 0;
@@ -862,6 +925,10 @@ function main() {
     );
     return 1;
   }
+
+  // PNGs are what the READMEs link to, but rasterising needs a browser, so it is opt-in and
+  // never part of --check: CI has no Chrome and must not fail for lacking one.
+  if (!check && process.argv.includes("--png")) rasteriseCharts();
   return 0;
 }
 
