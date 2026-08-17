@@ -6,7 +6,12 @@
     "eff-medium",
     "eff-high",
     "eff-xhigh",
-    "eff-max"
+    "eff-max",
+    "mdl-gpt-5.6-sol",
+    "mdl-gpt-5.6-luna",
+    "mdl-gpt-5.5",
+    "mdl-gpt-5.4",
+    "mdl-gpt-5.4-mini"
   ],
   "excluded": {
     "partA-preamble": "RETRACTED: 19 of its 20 skill runs never read SKILL.md, so its arms were the same untreated condition. Kept as data about invocation reliability.",

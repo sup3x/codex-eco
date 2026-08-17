@@ -131,6 +131,18 @@ function checkSkill(dir, name) {
   if (desc.length > DESCRIPTION_MAX) fail(where, `description is ${desc.length} chars, max ${DESCRIPTION_MAX}`);
   if (/[<>]/.test(desc)) fail(where, "description contains an angle bracket, which Codex forbids");
 
+  // A colon followed by a space makes an unquoted YAML scalar ambiguous, and Codex's
+  // loader rejects the file outright. This check exists because a description edit here
+  // shipped that exact break and only Codex's own validator caught it.
+  for (const [key, value] of Object.entries(fm)) {
+    if (typeof value !== "string") continue;
+    const raw = text.match(new RegExp(`^${key}:\\s*(.*)$`, "m"))?.[1] ?? "";
+    const quoted = /^(["']).*\1$/.test(raw.trim());
+    if (!quoted && /:\s/.test(value)) {
+      fail(where, `\`${key}\` contains ": " but is not quoted, so the YAML frontmatter will not parse`);
+    }
+  }
+
   if (typeof fm.metadata === "object" && fm.metadata) {
     for (const key of Object.keys(fm.metadata)) {
       if (key !== "short-description") fail(where, `metadata.${key} is not a Codex field (only short-description)`);
@@ -270,6 +282,60 @@ function checkRuleBlocks(root) {
   }
 }
 
+// Keys that live at the TOP level of a Codex config. Written below a `[section]` header
+// they silently become `section.key`, which Codex does not know and ignores without a
+// word - so a profile can look frugal and do nothing. This shipped once: four keys sat
+// under `[features]`, and `codex debug prompt-input` measured the top-level form of
+// include_permissions_instructions removing 3,939 characters against the prefixed form
+// removing 0. The authoritative check is `codex mcp-server --strict-config`, which needs
+// Codex; this is the CI-runnable version of the same rule.
+const TOP_LEVEL_KEYS = new Set([
+  "include_permissions_instructions",
+  "include_environment_context",
+  "include_apps_instructions",
+  "project_doc_max_bytes",
+  "tool_output_token_limit",
+  "model_reasoning_effort",
+  "model_verbosity",
+  "model_reasoning_summary",
+  "model_context_window",
+  "model",
+  "approval_policy",
+  "sandbox_mode",
+]);
+
+function checkProfiles(root) {
+  const dir = join(root, "profiles");
+  if (!existsSync(dir)) return;
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".toml"))) {
+    const where = `profiles/${file}`;
+    let section = "";
+    let lineNo = 0;
+    for (const raw of readFileSync(join(dir, file), "utf8").split(/\r?\n/)) {
+      lineNo++;
+      const line = raw.replace(/#.*$/, "").trim();
+      if (!line) continue;
+      const header = line.match(/^\[([A-Za-z0-9_.]+)\]$/);
+      if (header) {
+        section = header[1];
+        continue;
+      }
+      const kv = line.match(/^([A-Za-z0-9_]+)\s*=/);
+      if (!kv) {
+        fail(where, `line ${lineNo} is neither a comment, a [section] nor key = value: ${raw.trim()}`);
+        continue;
+      }
+      if (section && TOP_LEVEL_KEYS.has(kv[1])) {
+        fail(
+          where,
+          `line ${lineNo}: \`${kv[1]}\` is a top-level key but sits under [${section}], so Codex reads it ` +
+            `as ${section}.${kv[1]} and silently ignores it. Move it above the first [section] header.`,
+        );
+      }
+    }
+  }
+}
+
 /** The plugin's own version must match package.json, or an update never reaches users. */
 function checkVersionSync(root) {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -296,6 +362,7 @@ function main() {
   checkPlugin(pluginRoot);
   checkMarketplace(REPO);
   checkRuleBlocks(REPO);
+  checkProfiles(REPO);
   checkVersionSync(REPO);
 
   for (const n of notes) console.log(`note  ${n}`);

@@ -1,6 +1,6 @@
 ---
 name: eco
-description: Token-frugal mode for Codex - fewer tokens per turn at full task quality. Use when the user mentions tokens, cost, budget, quota, rate limits, or working economically, in any language. Invoke once; it holds for the thread. Pass "setup" to configure the durable savings.
+description: Token-frugal mode for Codex - fewer tokens per turn at full task quality. Use when the user mentions tokens, cost, budget, quota, rate limits, or working economically, in any language. Say nothing about invoking it - read this file, then let your first visible action be the work. Pass "setup" to configure durable savings instead.
 metadata:
   short-description: Fewer tokens per turn, with a correctness floor
 ---

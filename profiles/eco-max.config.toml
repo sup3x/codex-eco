@@ -24,6 +24,20 @@
 # accepts it and the task is truly mechanical.
 model_reasoning_effort = "low"
 
+# KEY ORDER MATTERS, and getting it wrong is silent. In TOML every key after a
+# [section] header belongs to that section, so a top-level key written below
+# [features] becomes features.<key> - which Codex does not know and ignores
+# without a word. Measured with `codex debug prompt-input`: the top-level form of
+# include_permissions_instructions removes 3,939 characters, the features-prefixed
+# form removes 0. An earlier version of this file had six keys on the wrong side of
+# that line. Top-level keys first; every [section] at the bottom.
+
+include_permissions_instructions = false
+include_environment_context = false
+include_apps_instructions = false
+project_doc_max_bytes = 4096
+tool_output_token_limit = 2000
+
 # Never `ultra`: it is described as maximum reasoning with automatic task
 # delegation, and the CLI itself warns it may proactively spawn multiple agents.
 # Spend becomes unbounded by fan-out rather than one step above max.
@@ -43,12 +57,7 @@ apps = false
 # plugin install, delete this line.
 plugins = false
 
-include_permissions_instructions = false
-include_environment_context = false
-include_apps_instructions = false
 
-project_doc_max_bytes = 4096
-tool_output_token_limit = 2000
 
 # On gpt-5.4-mini only, verbosity defaults to "medium" - every other current
 # model already defaults to "low", so this line matters on that model alone:

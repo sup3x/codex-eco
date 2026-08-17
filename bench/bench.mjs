@@ -64,6 +64,9 @@ Options
                        measures the checked-out body and not ~/.agents/skills
   --variants a=dir,b=dir
                        one treatment arm per skill directory, interleaved in one batch
+  --arm-config l=file  launch the arm named l with the keys from a profile TOML applied as
+                       -c overrides, so the rules and the config levers can be measured
+                       together instead of only apart
   --agents-file <path> add an arm that writes this file as the workspace AGENTS.md and
                        sends the task with no skill invocation. Codex loads AGENTS.md into
                        the prompt itself, so this arm carries the rules WITHOUT the shell
@@ -121,6 +124,34 @@ const slug = (t) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
+/**
+ * Flatten a profile TOML into `key=value` strings for `codex -c`.
+ *
+ * Deliberately minimal: comments, blank lines, `[section]` headers and `key = value`
+ * lines are all this project's profiles contain, and a real TOML parser would be a
+ * dependency this repository does not have. Anything it cannot read, it refuses to guess
+ * at - a silently dropped key would make an arm quietly weaker than the profile it claims
+ * to be testing.
+ */
+export function flatConfigKeys(file) {
+  const out = [];
+  let section = "";
+  for (const raw of readFileSync(file, "utf8").split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, "").trim();
+    if (!line) continue;
+    const header = line.match(/^\[([A-Za-z0-9_.]+)\]$/);
+    if (header) {
+      section = `${header[1]}.`;
+      continue;
+    }
+    const kv = line.match(/^([A-Za-z0-9_]+)\s*=\s*(.+)$/);
+    if (!kv) throw new Error(`${file}: cannot read line as TOML: ${raw.trim()}`);
+    out.push(`${section}${kv[1]}=${kv[2].trim()}`);
+  }
+  if (!out.length) throw new Error(`${file}: no config keys found`);
+  return out;
+}
+
 function buildPlan(opts, study) {
   const cfg = { ...(study ?? {}) };
   const pick = (key, fallback) => (opts[key] !== undefined ? opts[key] : (cfg[key] ?? fallback));
@@ -171,6 +202,23 @@ function buildPlan(opts, study) {
   }
   arms.unshift({ name: "baseline", kind: "baseline", skill: null, skillDir: null });
 
+  // `--arm-config label=path.toml` launches that arm with the profile's keys as `-c`
+  // overrides. This exists to answer a composition question the separate studies could
+  // not: the rules and the config levers are different mechanisms, and one of the levers
+  // (`include_environment_context=false`) removes the block that tells the model which OS
+  // it is on - which the shell rules assume it knows. Additive is the expectation, not a
+  // measurement, so it gets measured inside one batch like everything else.
+  const armConfigSpec = pick("arm-config", null);
+  if (armConfigSpec) {
+    for (const part of String(armConfigSpec).split(";")) {
+      const [label, file] = part.split("=");
+      if (!label || !file) throw new Error(`--arm-config expects label=path pairs, got "${part}"`);
+      const arm = arms.find((a) => a.name === slug(label));
+      if (!arm) throw new Error(`--arm-config names arm "${label}", which is not in this batch`);
+      arm.extraConfig = flatConfigKeys(resolve(REPO_DIR, file));
+    }
+  }
+
   const requested = opts.arms ?? cfg.armFilter;
   let selected = arms;
   if (requested) {
@@ -199,6 +247,7 @@ function buildPlan(opts, study) {
     rubric: rubric ?? null,
     arms: selected,
     agentsSpec: agentsSpec ?? null,
+    armConfig: armConfigSpec ?? null,
     n: intOpt(opts, "n", cfg.n ?? 1),
     model: pick("model", null),
     effort: pick("effort", null),
@@ -306,6 +355,7 @@ async function commandAb(opts, study) {
       skillDigest: a.skillDir ? digestFile(join(a.skillDir, "SKILL.md")) : null,
       agentsFile: a.agentsFile ? a.agentsFile.replace(REPO_DIR, ".") : null,
       agentsDigest: a.agentsFile ? digestFile(a.agentsFile) : null,
+      extraConfig: a.extraConfig ?? null,
     })),
   };
 
@@ -386,6 +436,7 @@ async function commandAb(opts, study) {
             skipGitRepoCheck: !isRepo,
             timeoutMs: plan.timeoutMs,
             resumeFrom: turnIndex === 0 ? null : threadId,
+            extraArgs: (arm.extraConfig ?? []).flatMap((kv) => ["-c", kv]),
           });
           exitCode = res.exitCode;
           const file = single ? `${id}.jsonl` : `${id}_t${turnIndex + 1}.jsonl`;

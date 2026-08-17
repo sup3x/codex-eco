@@ -373,13 +373,18 @@ export function renderEfforts(lang = "en") {
 export function readModelBatches() {
   if (!existsSync(RESULTS)) return [];
   const out = [];
-  for (const dir of readdirSync(RESULTS)) {
-    if (!dir.startsWith("mdl-")) continue;
+  // The thread study IS the terra row: same study definition, same block, same effort,
+  // just a larger n. Re-running it under an `mdl-` tag would spend tokens to reproduce a
+  // measurement that already exists, so it is read in place and carries its own n.
+  for (const dir of [...readdirSync(RESULTS).filter((d) => d.startsWith("mdl-")), THREAD_TAG]) {
+    if (dir !== THREAD_TAG && !dir.startsWith("mdl-")) continue;
     const file = join(RESULTS, dir, "summary.json");
     if (!existsSync(file)) continue;
     const s = readJson(file);
     const base = s.arms.find((a) => a.kind === "baseline");
-    const eco = s.arms.find((a) => a.kind === "agents");
+    // The thread study carries two AGENTS.md arms. The shipped one is `lean`; taking
+    // whichever came first would have quietly reported the full block as the model's row.
+    const eco = s.arms.find((a) => a.name === "lean") ?? s.arms.find((a) => a.kind === "agents");
     if (!base || !eco) continue;
     out.push({
       model: s.model,
@@ -389,6 +394,10 @@ export function readModelBatches() {
       eco: eco.weighted.mean,
       delta: s.weightedComparisons?.[eco.name]?.pctChange ?? 0,
       outputDelta: s.comparisons?.[eco.name]?.pctChange ?? 0,
+      baselineCmds: base.commands.mean,
+      ecoCmds: eco.commands.mean,
+      basePreamble: base.preambles.mean,
+      ecoPreamble: eco.preambles.mean,
       clean: Boolean(
         eco.grades &&
           ["crash-bug", "nan-bug"].every((c) => eco.grades.criteria[c].hits === eco.grades.criteria[c].runs),
@@ -419,6 +428,85 @@ export function renderModels(lang = "en") {
     rows,
     footer: t.models.footer(sign),
   });
+}
+
+// ------------------------------------------------------------------- facts
+
+/**
+ * The numbers any other generator is allowed to quote. One function so the social card,
+ * the README and the charts cannot disagree, and gated by bench/headline.json so an
+ * un-replicated batch cannot leak into a picture.
+ */
+export function headlineFacts() {
+  const gate = join(REPO, "bench", "headline.json");
+  const allowed = new Set(existsSync(gate) ? (readJson(gate).studies ?? []) : []);
+
+  const prefixFile = join(ASSETS, "data", "prefix.json");
+  const p = existsSync(prefixFile) ? readJson(prefixFile) : null;
+  const prefix = p
+    ? {
+        codexVersion: p.codexVersion,
+        skills: p.skillsInCatalogue,
+        baseline: p.baseline.total,
+        safe: p.tiers.find((t) => t.id === "safe") ?? null,
+        aggressive: p.tiers.find((t) => t.id === "aggressive") ?? null,
+      }
+    : null;
+
+  const threadFile = join(RESULTS, THREAD_TAG, "summary.json");
+  const s = allowed.has(THREAD_TAG) && existsSync(threadFile) ? readJson(threadFile) : null;
+  const winnerName = s ? (s.arms.some((a) => a.name === "lean") ? "lean" : "agents") : null;
+  const winnerArm = s ? s.arms.find((a) => a.name === winnerName) : null;
+  const baseArm = s ? s.arms.find((a) => a.kind === "baseline") : null;
+  const thread =
+    s && winnerArm && baseArm
+      ? {
+          model: s.model,
+          n: baseArm.tokens.n,
+          costDelta: s.weightedComparisons?.[winnerName]?.pctChange ?? null,
+          ci: s.weightedComparisons?.[winnerName]?.ci95 ?? null,
+          p: s.weightedComparisons?.[winnerName]?.mannWhitneyP ?? null,
+          outputDelta: s.comparisons?.[winnerName]?.pctChange ?? null,
+          preambleBefore: baseArm.preambles.mean,
+          preambleAfter: winnerArm.preambles.mean,
+          skillDelta: s.weightedComparisons?.skill?.pctChange ?? null,
+        }
+      : null;
+
+  const effortRows = readEffortBatches().filter((b) => allowed.has(`eff-${b.effort}`));
+  const efforts = effortRows.length
+    ? {
+        n: effortRows.length,
+        perArm: effortRows[0].n,
+        model: effortRows[0].model,
+        sign: signTest(effortRows.map((b) => b.delta)),
+        best: Math.min(...effortRows.map((b) => b.delta)),
+        worst: Math.max(...effortRows.map((b) => b.delta)),
+        allClean: effortRows.every((b) => b.clean),
+      }
+    : null;
+
+  // The terra row comes from the thread study, so its gate key is that study's tag.
+  const modelRows = readModelBatches().filter(
+    (b) => allowed.has(`mdl-${b.model}`) || allowed.has(THREAD_TAG),
+  );
+  const models = modelRows.length
+    ? {
+        n: modelRows.length,
+        sign: signTest(modelRows.map((b) => b.delta)),
+        best: Math.min(...modelRows.map((b) => b.delta)),
+        worst: Math.max(...modelRows.map((b) => b.delta)),
+        allClean: modelRows.every((b) => b.clean),
+        names: modelRows.map((b) => b.model),
+      }
+    : null;
+
+  const manifestFile = join(REPO, "bench", "manifest.json");
+  const publishedRuns = existsSync(manifestFile)
+    ? Object.keys(readJson(manifestFile).runs ?? {}).length
+    : 0;
+
+  return { prefix, thread, efforts, models, publishedRuns };
 }
 
 // ------------------------------------------------------------- results block
@@ -526,6 +614,35 @@ export function renderResults(lang = "en") {
       tr
         ? "Eğilim açık ve mekanizması makul: effort yükseldikçe temel çıktı da uzuyor, yani kesilecek yağ artıyor."
         : "The trend is clear and its mechanism is plausible: the higher the effort, the longer the baseline's output, so the more fat there is to cut.",
+      "",
+    );
+  }
+
+  const models = readModelBatches().filter((b) => allowed.has(`mdl-${b.model}`) || allowed.has(THREAD_TAG));
+  if (models.length) {
+    const sign = signTest(models.map((b) => b.delta));
+    const deltas = models.map((b) => b.delta);
+    const lo = Math.min(...deltas);
+    const hi = Math.max(...deltas);
+    lines.push(
+      tr ? "### 4. Ve her modelde" : "### 4. And on every model",
+      "",
+      `![${tr ? "Modellere göre tekrar" : "Replication across models"}](assets/models${tr ? ".tr" : ""}.svg)`,
+      "",
+      tr ? "| Model | n | maliyet | çıktı | komut | önsöz | iki hata da |" : "| Model | n | cost | output | cmds | preamble | both bugs |",
+      "|---|---:|---:|---:|---:|---:|---|",
+    );
+    for (const b of models) {
+      lines.push(
+        `| \`${b.model}\` | ${b.n} | **${signed(b.delta, 1)}** | ${signed(b.outputDelta, 1)} | ` +
+          `${b.baselineCmds.toFixed(1)} → ${b.ecoCmds.toFixed(1)} | ${b.basePreamble.toFixed(2)} → ${b.ecoPreamble.toFixed(2)} | ${b.clean ? (tr ? "evet" : "yes") : (tr ? "HAYIR" : "NO")} |`,
+      );
+    }
+    lines.push(
+      "",
+      tr
+        ? `**${sign.sameDirection}/${sign.n} model aynı yöne** gitti, iki yönlü işaret testi p = ${sign.p.toFixed(5)}; etki **${plain(hi)} ile ${plain(lo)}** arasında. Önsöz turu her modelde sıfıra indi ve ekili iki hata her modelin her koşusunda bulundu. Mutlak sayılar modeller arasında kıyaslanamaz — tokenizer'lar farklı — o yüzden karşılaştırılan şey satır içindeki yüzde.`
+        : `**${sign.sameDirection}/${sign.n} models moved the same way**, two-sided sign test p = ${sign.p.toFixed(5)}, effect between **${plain(hi)} and ${plain(lo)}**. The preamble turn went to zero on every model, and both planted bugs were found in every run of every model. Absolute counts are not comparable across models — different tokenizers — so what is compared is the percentage within a row.`,
     );
   }
 

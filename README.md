@@ -1,6 +1,8 @@
 # codex-eco — eco mode for Codex
 
-**Your Codex session already costs you ~5,500 tokens before you type a character. `codex-eco` measures that with a free offline audit, cuts a third of it with settings that are verified against your own Codex build, and installs behavioural rules through the one channel that costs nothing to deliver — including the measurements that told us the obvious channel was the wrong one.**
+**Your Codex session costs ~5,000 tokens before you type a character. `codex-eco` measures that with a free offline audit, cuts 35–59% of it with settings verified against your own Codex build, and installs behavioural rules through the one channel that costs nothing to deliver — 16% cheaper threads, 37% fewer output tokens, no preamble turn, both planted bugs still found in every run.**
+
+**The interesting part is the measurement that told us the obvious channel was the wrong one.** Two of this project's own studies are retracted in public, and the design changed because of it.
 
 Works in **Codex CLI** and in **Codex inside the ChatGPT desktop app**. One install covers both.
 
@@ -174,6 +176,21 @@ Every arm found both planted bugs in every run, so cheapness decides. The short 
 The shipped block was run against no rules in 5 independent batches on `gpt-5.6-terra` (n=3 per arm): **5/5 batches moved the same way**, two-sided sign test p = 0.063. The effect ranged from **−7.0% to −25.1%**, and both planted bugs were found at every level in every run. The published number is that range, not any one batch.
 
 The trend is clear and its mechanism is plausible: the higher the effort, the longer the baseline's output, so the more fat there is to cut.
+
+### 4. And on every model
+
+![Replication across models](assets/models.svg)
+
+| Model | n | cost | output | cmds | preamble | both bugs |
+|---|---:|---:|---:|---:|---:|---|
+| `gpt-5.6-terra` | 5 | **−16.0%** | −37.4% | 1.4 → 1.4 | 1.00 → 0.00 | yes |
+| `gpt-5.6-sol` | 3 | **−14.5%** | −34.4% | 3.0 → 2.0 | 1.00 → 0.00 | yes |
+| `gpt-5.6-luna` | 3 | **−40.4%** | −27.9% | 2.0 → 1.0 | 1.00 → 0.00 | yes |
+| `gpt-5.5` | 3 | **−23.3%** | −45.0% | 3.7 → 1.3 | 1.00 → 0.00 | yes |
+| `gpt-5.4-mini` | 3 | **−18.0%** | −34.4% | 4.0 → 1.3 | 1.00 → 0.00 | yes |
+| `gpt-5.4` | 3 | **−20.2%** | −26.6% | 4.0 → 1.0 | 1.00 → 0.00 | yes |
+
+**6/6 models moved the same way**, two-sided sign test p = 0.03125, effect between **−14.5% and −40.4%**. The preamble turn went to zero on every model, and both planted bugs were found in every run of every model. Absolute counts are not comparable across models — different tokenizers — so what is compared is the percentage within a row.
 <!-- codex-eco:results:end -->
 
 ## What the rules actually target
@@ -196,7 +213,7 @@ Published Codex guides recommend all of these. None of them saves anything on Co
 | `hide_agent_reasoning` / `show_raw_agent_reasoning` | Display-only. Measured identical prompt, byte for byte. |
 | `features.token_budget` | Under development, and enabling it **adds** ~1,858 characters of guidance to your prompt. |
 | `model_supports_reasoning_summaries` | In the official sample config; **rejected as an unknown field** by the installed binary. |
-| `minimal` reasoning effort | The CLI accepts any string silently; some current models reject `minimal` with HTTP 400 at request time. `low` is the safe floor. |
+| `minimal` reasoning effort | The CLI accepts any string silently, and the request then fails. Verified on `gpt-5.6-terra`, which answers with HTTP 400 and enumerates what it does take: *"Unsupported value: 'minimal' is not supported ... Supported values are: 'none', 'low', 'medium', 'high', 'xhigh', and 'max'."* So the real floor is **`none`**, not `low` — it runs, and it produces zero reasoning tokens. |
 | Lowering `model_context_window` to shrink the skills block | It works (−1,883 chars at 100k) but also lowers the auto-compact trigger, and compaction is a total cache kill. Net negative. |
 
 That table is the reason this project exists in the form it does: on Codex it is easy to publish a configuration that feels frugal and measurably is not.
@@ -208,16 +225,41 @@ That table is the reason this project exists in the form it does: on Codex it is
 - **Config keys are validated with `codex mcp-server --strict-config`** before being recommended. Codex silently ignores unknown keys, so this is the only way to know a setting is real.
 - **Quality is graded deterministically.** `bench/lib/grade.mjs` scores each answer for the planted bugs with no model in the loop. It also has a documented false-negative it caused and how that was caught — see Amendment 2 in the [pre-registration](bench/preregistration/001-first-study.md).
 - **Rule changes are pre-registered.** Endpoints and thresholds are written down before the runs, and the failures are published with the successes.
+- **The experiment is checked before it is run.** `bench/lib/preflight.mjs` renders the batch's own prompt with `codex debug prompt-input` and refuses to start if a staged skill name does not resolve to exactly one file inside the staged workspace. It was written after that check would have failed *every* batch this project had run: a stale copy of `eco` in `$HOME/.agents/skills` had been appearing in the catalogue beside the copy under test.
+- **A grading change is applied to every stored run at once.** `scripts/regrade.mjs` re-grades all recorded event streams and prints a per-arm before/after, so widening a criterion cannot quietly help one arm. CI fails if any committed summary disagrees with what the current rubric produces.
+- **Charts and tables are generated, never written.** `scripts/build-charts.mjs` renders both languages from the recorded data, and `--check` fails CI if a committed SVG or results table drifts from it. The chart renderer throws when a label would be clipped rather than shipping a truncated number.
+- **Nothing reaches a README without passing the headline gate.** `bench/headline.json` names the studies allowed to produce a claim. Two studies in this project were retracted after the fact; the gate is what kept them out of the numbers while they were still believed.
 - **No dollar figures, ever.** The `codex exec` event stream contains no cost field. On a ChatGPT plan the currency is your rate limit, so this project reports tokens.
 
 ## Install in detail
 
-### Standalone skills — CLI *and* the desktop app
+### The rules — the part that does the work
 
 ```bash
-./install.sh                 # $HOME/.agents/skills
-CODEX_SKILLS_DIR=... ./install.sh
-./install.sh --uninstall
+./install.sh --rules-only              # $CODEX_HOME/AGENTS.md, or ~/.codex/AGENTS.md
+./install.sh --rules-only --project    # ./AGENTS.md in the repo you are standing in
+./install.sh --rules-only --full       # the 3.6 kB block instead of the 1.1 kB one
+./install.sh --rules-only --uninstall
+```
+
+Codex loads `AGENTS.md` from the global `$CODEX_HOME` and from the project you are working in, both
+into the same `<INSTRUCTIONS>` section of the prompt. The global one is the default here because the
+saving should not depend on remembering to set up each repository.
+
+Two things worth knowing before you install it:
+
+- **The block is re-sent on every request.** That is why the default is 1.1 kB and why CI refuses to let
+  it grow past 1,600 bytes. `--full` is there if you would rather have every rule than the cheapest block.
+- **`project_doc_max_bytes` truncates silently**, at 32,768 bytes by default. If your `AGENTS.md` is
+  already near that, adding to it can push your own instructions off the end. `node scripts/prefix-audit.mjs`
+  run inside the project shows you what yours currently costs.
+
+### The skills — for `setup`, and for repos you do not control
+
+```bash
+./install.sh --skills-only             # $HOME/.agents/skills
+CODEX_SKILLS_DIR=... ./install.sh --skills-only
+./install.sh --skills-only --uninstall
 ```
 
 Codex reads standalone skills from three roots, most specific first:
@@ -227,6 +269,10 @@ $CWD/.agents/skills      # this project only
 $HOME/.agents/skills     # you, everywhere
 /etc/codex/skills        # the whole machine or container
 ```
+
+It publishes a skill from **every** root it finds one in, so two copies of `eco` mean two catalogue
+entries with one name: both descriptions billed every turn, and `$eco` no longer pointing at one body.
+Keep one copy. `node scripts/prefix-audit.mjs` reports duplicates it finds.
 
 ### As a Codex plugin — CLI, one command
 

@@ -11,17 +11,23 @@
 #
 # Every key below was validated with `codex mcp-server --strict-config` and its
 # effect measured with `codex debug prompt-input` - free, offline, no model call.
-# On the maintainer's machine this tier took the pre-typing prefix from 22,290 to
-# 14,684 characters (-34.1%). Your numbers will differ; run the audit.
+# On the maintainer's machine this tier took the pre-typing prefix from 20,122 to
+# 13,166 characters (-34.6%); assets/data/prefix.json records that measurement with
+# its Codex version and date. Your numbers will differ - run the audit.
 
 # --------------------------------------------------------------- prompt prefix
 # The four levers in this tier, largest first. Two of them cost you something,
 # and the comment says which.
 
-# Removes the recommended-plugins advert: a list of plugins you have NOT
-# installed. Pure win - it advertises, it does not inform.
-[features]
-tool_suggest = false
+# KEY ORDER MATTERS HERE, and getting it wrong is silent.
+#
+# In TOML every key after a [section] header belongs to that section. An earlier
+# version of this file put the four top-level keys BELOW [features], which turned
+# them into features.include_permissions_instructions and friends - keys Codex
+# does not know and ignores without a word. Measured with `codex debug
+# prompt-input`: the top-level form of include_permissions_instructions removes
+# 3,939 characters, the features-prefixed form removes 0. So the top-level keys
+# come first and every [section] goes at the bottom of the file.
 
 # Removes the escalation/permissions prose. THIS ONE HAS A COST: the model gets
 # less guidance about when to stop and ask before running something. Keep it
@@ -29,7 +35,8 @@ tool_suggest = false
 include_permissions_instructions = false
 
 # Removes the cwd/OS/git-branch block. Small, and the cost is that the model no
-# longer knows your platform unless you tell it.
+# longer knows your platform unless you tell it. The eco rules hedge their shell
+# advice for exactly this reason (`sed -n` POSIX / `Get-Content` PowerShell).
 include_environment_context = false
 
 # Removes the ChatGPT-apps instructions. Free unless you use apps from Codex.
@@ -47,6 +54,14 @@ project_doc_max_bytes = 8192
 # are trading the end of long command output for tokens. Raise it if you read
 # long logs through the agent.
 tool_output_token_limit = 4000
+
+# ---------------------------------------------------------------- subsections
+# Everything below a [section] header belongs to that section, so these come last.
+
+# Removes the recommended-plugins advert: a list of plugins you have NOT
+# installed. Pure win - it advertises, it does not inform.
+[features]
+tool_suggest = false
 
 # ------------------------------------------------- deliberately NOT set here
 # model_reasoning_effort: left alone on purpose. The default is per-model, and

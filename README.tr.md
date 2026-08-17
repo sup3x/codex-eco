@@ -1,6 +1,8 @@
 # codex-eco — Codex için eco modu
 
-**Codex oturumun sen tek harf yazmadan önce zaten ~5.000 token'a mal oluyor. `codex-eco` bunu bedava ve çevrimdışı bir denetimle ölçer, kendi Codex sürümünde doğrulanmış ayarlarla üçte birini keser, ve davranış kurallarını taşıması hiçbir şeye mal olmayan tek kanaldan kurar — bariz görünen kanalın yanlış olduğunu söyleyen ölçümler dahil.**
+**Codex oturumun sen tek harf yazmadan önce ~5.000 token'a mal oluyor. `codex-eco` bunu bedava ve çevrimdışı bir denetimle ölçer, kendi Codex sürümünde doğrulanmış ayarlarla %35–59'unu keser, ve davranış kurallarını taşıması hiçbir şeye mal olmayan tek kanaldan kurar — %16 daha ucuz konuşmalar, %37 daha az çıktı token'ı, önsöz turu yok, ekili iki hata hâlâ her koşuda bulunuyor.**
+
+**En ilginç kısmı, bariz görünen kanalın yanlış olduğunu söyleyen ölçüm.** Bu projenin kendi çalışmalarından ikisi açıkça geri çekildi ve tasarım bu yüzden değişti.
 
 **Codex CLI** ve **ChatGPT masaüstü uygulamasındaki Codex** için çalışır. Tek kurulum ikisini de kapsar.
 
@@ -158,6 +160,21 @@ Her kol, her koşuda iki ekili hatayı da buldu; karar bu yüzden ucuzluğa kal�
 Dağıtılan blok, `gpt-5.6-terra` üzerinde 5 bağımsız partide sınandı (kol başına n=3); **5/5 parti aynı yöne** gitti, iki yönlü işaret testi p = 0.063. Etki **-7.0% ile -25.1%** arasında değişti ve iki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.
 
 Eğilim açık ve mekanizması makul: effort yükseldikçe temel çıktı da uzuyor, yani kesilecek yağ artıyor.
+
+### 4. Ve her modelde
+
+![Modellere göre tekrar](assets/models.tr.svg)
+
+| Model | n | maliyet | çıktı | komut | önsöz | iki hata da |
+|---|---:|---:|---:|---:|---:|---|
+| `gpt-5.6-terra` | 5 | **−16.0%** | −37.4% | 1.4 → 1.4 | 1.00 → 0.00 | evet |
+| `gpt-5.6-sol` | 3 | **−14.5%** | −34.4% | 3.0 → 2.0 | 1.00 → 0.00 | evet |
+| `gpt-5.6-luna` | 3 | **−40.4%** | −27.9% | 2.0 → 1.0 | 1.00 → 0.00 | evet |
+| `gpt-5.5` | 3 | **−23.3%** | −45.0% | 3.7 → 1.3 | 1.00 → 0.00 | evet |
+| `gpt-5.4-mini` | 3 | **−18.0%** | −34.4% | 4.0 → 1.3 | 1.00 → 0.00 | evet |
+| `gpt-5.4` | 3 | **−20.2%** | −26.6% | 4.0 → 1.0 | 1.00 → 0.00 | evet |
+
+**6/6 model aynı yöne** gitti, iki yönlü işaret testi p = 0.03125; etki **−14.5% ile −40.4%** arasında. Önsöz turu her modelde sıfıra indi ve ekili iki hata her modelin her koşusunda bulundu. Mutlak sayılar modeller arasında kıyaslanamaz — tokenizer'lar farklı — o yüzden karşılaştırılan şey satır içindeki yüzde.
 <!-- codex-eco:results:end -->
 
 ## Kurallar tam olarak neyi hedefliyor
@@ -180,7 +197,7 @@ Yayınlanmış Codex rehberleri bunların hepsini öneriyor. Codex 0.147'de hiç
 | `hide_agent_reasoning` / `show_raw_agent_reasoning` | Yalnızca görüntüyle ilgili. Ölçüldü: prompt bayt bayt aynı. |
 | `features.token_budget` | Geliştirme aşamasında, ve açmak prompt'a ~1.858 karakter **ekliyor**. |
 | `model_supports_reasoning_summaries` | Resmî örnek config'de var; kurulu binary **bilinmeyen alan diye reddediyor**. |
-| `minimal` akıl yürütme eforu | CLI her string'i sessizce kabul ediyor; bazı güncel modeller `minimal`'ı istek anında HTTP 400 ile reddediyor. Güvenli taban `low`. |
+| `minimal` akıl yürütme eforu | CLI her string'i sessizce kabul ediyor, istek sonra başarısız oluyor. `gpt-5.6-terra` üzerinde doğrulandı: HTTP 400 dönüyor ve kabul ettiklerini sayıyor — *"Unsupported value: 'minimal' is not supported ... Supported values are: 'none', 'low', 'medium', 'high', 'xhigh', and 'max'."* Yani gerçek taban `low` değil, **`none`** — çalışıyor ve sıfır reasoning token üretiyor. |
 | Skills bloğunu küçültmek için `model_context_window`'u düşürmek | İşe yarıyor (100k'da −1.883 karakter) ama otomatik sıkıştırma eşiğini de düşürüyor, ve sıkıştırma cache'i tamamen öldürüyor. Net etki negatif. |
 
 Bu tablo, projenin neden bu biçimde var olduğunun cevabı: Codex'te frugal *görünen* ama ölçüldüğünde olmayan bir yapılandırma yayınlamak çok kolay.
@@ -192,16 +209,36 @@ Bu tablo, projenin neden bu biçimde var olduğunun cevabı: Codex'te frugal *g�
 - **Config anahtarları önerilmeden önce `codex mcp-server --strict-config` ile doğrulanıyor.** Codex bilinmeyen anahtarları sessizce yok sayıyor, yani bir ayarın gerçek olduğunu anlamanın tek yolu bu.
 - **Kalite deterministik notlanıyor.** `bench/lib/grade.mjs` her cevabı planlanmış hatalara karşı, döngüde model olmadan puanlıyor. Kendi ürettiği bir yanlış-negatif ve nasıl yakalandığı da belgeli — [ön-kayıttaki](bench/preregistration/001-first-study.md) Amendment 2.
 - **Kural değişiklikleri ön-kayıtlı.** Uç noktalar ve eşikler çalıştırmalardan önce yazılıyor, başarısızlıklar başarılarla birlikte yayınlanıyor.
+- **Deney, çalıştırılmadan önce kontrol edilir.** `bench/lib/preflight.mjs`, partinin kendi prompt'unu `codex debug prompt-input` ile üretir ve sahnelenen bir skill adı çalışma alanı içinde tam olarak bir dosyaya çözülmüyorsa partiyi başlatmaz. Bu kontrol, bu projenin çalıştırdığı **her** partiyi eleyecek bir kusurdan sonra yazıldı: `$HOME/.agents/skills` içindeki bayat bir `eco` kopyası, test edilen kopyanın yanında katalogda görünüyordu.
+- **Notlama değişikliği tüm kayıtlı koşulara birden uygulanır.** `scripts/regrade.mjs` bütün kayıtlı olay akışlarını yeniden notlar ve kol bazında öncesi/sonrası basar; böylece bir ölçütü genişletmek sessizce tek bir kola yardım edemez. Kayıtlı bir özet, mevcut kuralın ürettiğiyle çelişiyorsa CI hata verir.
+- **Grafikler ve tablolar üretilir, yazılmaz.** `scripts/build-charts.mjs` her iki dili kayıtlı veriden üretir; `--check` kayıtlı bir SVG veya sonuç tablosu veriden saparsa CI'yı düşürür. Grafik üretici, bir etiket kırpılacaksa kırpılmış sayı yayınlamak yerine hata verir.
+- **Hiçbir şey ana-iddia kapısını geçmeden README'ye giremez.** `bench/headline.json`, iddia üretmesine izin verilen çalışmaları adlandırır. Bu projede iki çalışma sonradan geri çekildi; onlar hâlâ doğru sanılırken sayıların dışında tutan şey bu kapıydı.
 - **Asla dolar rakamı yok.** `codex exec` olay akışında maliyet alanı yok. ChatGPT planında para birimi senin hız sınırın, o yüzden bu proje token raporlar.
 
 ## Kurulum, detaylı
 
-### Standalone skill — CLI **ve** masaüstü uygulaması
+### Kurallar — işi yapan kısım
 
 ```bash
-./install.sh                 # $HOME/.agents/skills
-CODEX_SKILLS_DIR=... ./install.sh
-./install.sh --uninstall
+./install.sh --rules-only              # $CODEX_HOME/AGENTS.md, ya da ~/.codex/AGENTS.md
+./install.sh --rules-only --project    # içinde bulunduğun deponun ./AGENTS.md dosyası
+./install.sh --rules-only --full       # 1.1 kB yerine 3.6 kB'lık blok
+./install.sh --rules-only --uninstall
+```
+
+Codex `AGENTS.md`'yi hem global `$CODEX_HOME`'dan hem çalıştığın projeden okuyor; ikisi de prompt'un aynı `<INSTRUCTIONS>` bölümüne giriyor. Burada varsayılan global olan, çünkü tasarrufun her depoyu ayrı ayrı kurmayı hatırlamana bağlı olmaması gerekir.
+
+Kurmadan önce bilmeye değer iki şey:
+
+- **Blok her istekte yeniden gönderilir.** Varsayılanın 1.1 kB olmasının ve CI'nın 1.600 baytı geçmesine izin vermemesinin sebebi bu. En ucuz blok yerine her kuralı istiyorsan `--full` orada.
+- **`project_doc_max_bytes` sessizce kırpar**, varsayılanı 32.768 bayt. `AGENTS.md`'niz o sınıra yakınsa, üzerine ekleme yapmak kendi talimatlarınızı sonundan taşırabilir. Proje içinde çalıştırılan `node scripts/prefix-audit.mjs` sizinkinin şu an ne kadara mal olduğunu gösterir.
+
+### Skill'ler — `setup` için ve kontrol etmediğin depolar için
+
+```bash
+./install.sh --skills-only             # $HOME/.agents/skills
+CODEX_SKILLS_DIR=... ./install.sh --skills-only
+./install.sh --skills-only --uninstall
 ```
 
 Codex standalone skill'leri üç kökten, en özelden başlayarak okuyor:
@@ -211,6 +248,8 @@ $CWD/.agents/skills      # yalnız bu proje
 $HOME/.agents/skills     # sen, her yerde
 /etc/codex/skills        # tüm makine veya konteyner
 ```
+
+Ve bir skill'i bulduğu **her** kökten yayınlıyor; yani `eco`'nun iki kopyası, tek adla iki katalog girdisi demek: her turda iki açıklama da faturalanır ve `$eco` artık tek bir gövdeyi göstermez. Tek kopya tut. `node scripts/prefix-audit.mjs` bulduğu mükerrer kayıtları bildirir.
 
 ### Codex plugin'i olarak — CLI, tek komut
 

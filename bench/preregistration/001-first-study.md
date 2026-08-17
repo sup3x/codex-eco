@@ -530,3 +530,82 @@ Two observations worth recording because they were not predicted:
 - **`xhigh` is noisier than its neighbours** (CI −47 … +30 at n=3) while `max` is tight. Nothing in the
   data explains that, and with n=3 it does not need explaining beyond variance; it is reported rather
   than smoothed.
+
+---
+
+## Amendment 5's second replication — every model
+
+Same study as the effort sweep, one factor swapped: the shipped 1.1 kB block against no rules, three-turn
+thread, arms interleaved within each batch, one batch per model. `gpt-5.6-terra`'s row is the thread
+study itself (same definition, n=5); the rest are n=3.
+
+| Model | n | cost | output | commands | preamble | both bugs |
+|---|---:|---:|---:|---:|---:|---|
+| `gpt-5.6-terra` | 5 | **−16.0%** | −37.4% | 1.4 → 1.4 | 1.00 → 0.00 | 5/5 |
+| `gpt-5.6-sol` | 3 | −14.5% | −34.4% | 3.0 → 2.0 | 1.00 → 0.00 | 3/3 |
+| `gpt-5.6-luna` | 3 | **−40.4%** | −27.9% | 2.0 → 1.0 | 1.00 → 0.00 | 3/3 |
+| `gpt-5.5` | 3 | −23.3% | −45.0% | 3.7 → 1.3 | 1.00 → 0.00 | 3/3 |
+| `gpt-5.4` | 3 | −20.2% | −26.6% | 4.0 → 1.0 | 1.00 → 0.00 | 3/3 |
+| `gpt-5.4-mini` | 3 | −18.0% | −34.4% | 4.0 → 1.3 | 1.00 → 0.00 | 3/3 |
+
+**6/6 in the same direction, two-sided sign test p = 0.031**, effect between −14.5% and −40.4%. The
+preamble turn went to zero on every model without exception, both planted bugs were found in every run
+of every model, and the command count fell on five of the six — the older models most of all, because
+they surveyed the most.
+
+Absolute counts are not comparable across models, so nothing here compares them; only the percentage
+within a row is a comparison, and that is what the table and the chart show.
+
+With the five effort levels, that is **eleven independent batches, all in the same direction, none
+hidden, quality intact in all of them**. The published effect is still a range, per the pre-registration.
+
+## Amendment 7 — a shipped configuration that measured as doing nothing
+
+Found while adding `--arm-config`, which flattens a profile TOML into `-c key=value` overrides so the
+rules and the config levers could finally be measured *together* instead of only apart. The flattener
+printed this for the profile that was about to ship:
+
+```
+features.tool_suggest=false
+features.include_permissions_instructions=false
+features.include_environment_context=false
+features.include_apps_instructions=false
+features.project_doc_max_bytes=8192
+features.tool_output_token_limit=4000
+```
+
+Only the first line was intended. In TOML every key after a `[section]` header belongs to that section,
+and the file had put its four top-level keys *below* `[features]`. Codex ignores unknown keys without a
+word, so the profile looked frugal and did nothing. Measured with `codex debug prompt-input`:
+
+| key | as written in the profile | as intended |
+|---|---:|---:|
+| `include_environment_context = false` | 0 chars | **−487** |
+| `include_permissions_instructions = false` | 0 chars | **−3,939** |
+
+`eco-max.config.toml` had the same defect across six keys.
+
+This is precisely the failure mode this project's own README warns about — "on Codex it is easy to
+publish a configuration that feels frugal and measurably is not" — and it very nearly shipped inside the
+artifact making the warning. The reason the README's audit numbers were nevertheless correct is that
+`scripts/prefix-audit.mjs` passes each key as a `-c` override directly, never through the profile file,
+so it measured the levers while the profile would not have applied them. Measuring a lever and shipping
+a lever are two different claims, and only one of them had been checked.
+
+Fixed by putting every top-level key above the first `[section]` header, and then verified the way it
+should have been in the first place — **end to end, as a file, through `codex --profile`**:
+
+| | prefix | vs no profile |
+|---|---:|---:|
+| no profile | 20,130 chars | — |
+| `--profile eco` | 13,162 chars | **−34.6%** |
+| `--profile eco-max` | 8,246 chars | **−59.0%** |
+
+Those match the audit's per-key figures to within four characters, which is the difference between the
+two probes' prompt text. In a bare `CODEX_HOME` the two profiles measure identically, because `eco-max`'s
+extra levers turn off plugins and apps that a bare home does not have — worth stating, since it means a
+reader's saving depends on what they have installed, exactly as the audit's footer says.
+
+`scripts/validate-repo.mjs` now fails on any known top-level key written under a `[section]` header, with
+the measured cost of the mistake in the message. The negative test for that gate is in the commit that
+added it.

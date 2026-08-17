@@ -8,8 +8,27 @@ launch, is undone by deleting one file, and never churns a cached prefix mid-thr
 $CODEX_HOME/eco.config.toml     # then: codex --profile eco
 ```
 
-Two thirds of a thread's cost is fixed before the user types: the injected prefix, the model, and
-the effort level. Attack them in that order.
+## First, the rules block — the largest lever, and the one that is not a setting
+
+Before any config key, offer this. It is what measured an effect:
+
+```
+$CODEX_HOME/AGENTS.md     # append the codex-eco block; Codex loads it into every prompt
+```
+
+Codex injects `AGENTS.md` verbatim on every turn, so the rules apply with no extra round trip, at
+every reasoning effort, on every model, in the CLI and the desktop app alike. Invoking a skill cannot
+match that: the body has to be read with a shell command first, and measured on a three-turn thread
+that made the skill path **27% more expensive** than no rules at all while the 1.1 kB `AGENTS.md`
+block was **16% cheaper**.
+
+If the repository is checked out, `./install.sh --rules-only` does it with a backup and an idempotent
+marker block. If not, offer to append the block yourself, and keep it short — the file is re-sent on
+every request, so its size is a per-turn cost, and `project_doc_max_bytes` truncates the excess in
+silence.
+
+Roughly two thirds of a thread's cost is fixed before the user types: the injected prefix, the model,
+and the effort level. Attack them in that order.
 
 ## The prefix, measured largest first
 
@@ -39,7 +58,10 @@ plainly rather than pretending otherwise.
   `gpt-5.6-sol` already defaults to `low`, so "medium" would raise their spend.
 - The ladder is model- and account-dependent. The CLI accepts any string silently and an unsupported
   rung fails only when the request is sent, so verify with one throwaway run before recommending it.
-  `low` exists everywhere and is the safe floor.
+  On `gpt-5.6-terra` the server enumerates its own ladder in the 400 it returns for a bad rung:
+  `none`, `low`, `medium`, `high`, `xhigh`, `max` - and `minimal`, which several guides recommend, is
+  not on it. So the floor is `none`, not `low`; it runs and produces zero reasoning tokens. Do not
+  suggest `none` for anything with a correctness requirement without checking the work, and say that.
 - Never `ultra`: the CLI warns it may proactively spawn multiple agents, so spend stops being a
   linear step above `max`.
 - `codex --profile eco-max` is the ready-made floor for routine chores.
