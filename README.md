@@ -320,6 +320,15 @@ A profile is layered at launch, so it never invalidates a cached prefix the way 
 | [agent-token-saver](https://github.com/Supersynergy/agent-token-saver) | Controlled A/B on Codex | The prior art for measuring this on Codex at all. We cite it and try to beat it on protocol: pre-registration, n per arm, bootstrap CI, exact Mann-Whitney, deterministic grading, and published negative results. |
 | ccusage-style dashboards | Monitoring | Measure spend after the fact; reduce nothing. |
 
+## If it saves you tokens
+
+A star is the whole price, and the only one.
+
+If it *doesn't* save you tokens, an issue with your numbers is worth more than a star. Run
+`node bench/bench.mjs study review-thread --n 5 --model <yours>` on your own workload and post what
+you get — results where eco loses are as publishable as results where it wins, and there are already
+several in here.
+
 ## Contributing
 
 Benchmark results from other models, plans and platforms are the most valuable contribution — especially ones where eco loses. `node bench/bench.mjs ab --task "..." --n 5 --rubric orders-review` writes every run's event stream for you. See [CONTRIBUTING.md](CONTRIBUTING.md).

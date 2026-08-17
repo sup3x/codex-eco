@@ -297,6 +297,14 @@ Profil açılışta katmanlanır; bu yüzden thread ortasında model/efor deği�
 | [agent-token-saver](https://github.com/Supersynergy/agent-token-saver) | Codex'te kontrollü A/B | Bunu Codex'te ölçen tek önceki çalışma. Atıf veriyoruz ve protokolde geçmeye çalışıyoruz: ön-kayıt, kol başına n, bootstrap GA, kesin Mann-Whitney, deterministik notlama ve yayınlanan negatif sonuçlar. |
 | ccusage tarzı panolar | İzleme | Harcamayı sonradan ölçer; hiçbir şeyi azaltmaz. |
 
+## Token kazandırırsa
+
+Tek bedeli bir yıldız, başka da bir şey yok.
+
+Kazandırmazsa, sayılarınla açacağın bir issue yıldızdan daha değerli. Kendi iş yükünde
+`node bench/bench.mjs study review-thread --n 5 --model <senin modelin>` çalıştır ve çıkanı paylaş —
+eco'nun kaybettiği sonuçlar da kazandığı kadar yayınlanabilir, ve içeride zaten birkaç tane var.
+
 ## Katkı
 
 En değerli katkı başka modellerden, planlardan ve platformlardan gelen ölçüm sonuçları — özellikle eco'nun kaybettiği sonuçlar. `node bench/bench.mjs ab --task "..." --n 5 --rubric orders-review` her çalıştırmanın olay akışını senin için yazar. [CONTRIBUTING.md](CONTRIBUTING.md).
