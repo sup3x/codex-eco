@@ -1,0 +1,10 @@
+{
+  "$comment": "Which studies the README's results table is allowed to draw from. Everything in bench/raw/ is published; this file decides what counts as a HEADLINE claim. A single batch is not enough - see Amendment 3 in bench/preregistration/001-first-study.md, where the same configuration measured -49% in one batch and +24% in another. Studies listed here must be replicated or explicitly labelled.",
+  "studies": [],
+  "excluded": {
+    "partA-preamble": "wording experiment: its arms are variants, not a baseline-vs-eco headline",
+    "partB2-body-length": "body-length experiment on one model, and the batch that showed the variance problem",
+    "review-gpt-5-6-sol": "single un-replicated batch; superseded by the effort sweep. Published as data, not as a headline",
+    "review-gpt-5-6-terra": "single un-replicated batch that contradicts partB2 on the same body; the reason the headline waits"
+  }
+}

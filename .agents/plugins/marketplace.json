@@ -1,0 +1,20 @@
+{
+  "name": "codex-eco",
+  "interface": {
+    "displayName": "Codex Eco",
+    "description": "Token-frugal skills for Codex, published with the raw runs behind every number."
+  },
+  "plugins": [
+    {
+      "name": "eco",
+      "source": {
+        "source": "local",
+        "path": "./plugins/eco"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Engineering"
+    }
+  ]
+}

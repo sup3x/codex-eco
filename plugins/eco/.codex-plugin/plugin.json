@@ -1,0 +1,38 @@
+{
+  "name": "eco",
+  "version": "0.1.0",
+  "interface": {
+    "displayName": "Eco",
+    "shortDescription": "Spend fewer tokens per turn, with a correctness floor that is measured, not asserted",
+    "longDescription": "Eco mode for Codex: no preamble turns, no unasked directory surveys, region reads instead of whole-file dumps, batched shell calls, apply_patch over rewrites - plus a setup path that turns the real config levers (reasoning effort, verbosity, reasoning summaries, tool output limits) rather than only asking the model nicely. Every published number is recomputed from raw runs.",
+    "developerName": "Kerim",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive",
+      "Read"
+    ],
+    "defaultPrompt": [
+      "Use eco to work through this task with minimum token spend.",
+      "Use eco setup to write the durable savings into my config.toml.",
+      "Use eco-audit to report what my current Codex configuration costs me."
+    ],
+    "brandColor": "#34D399"
+  },
+  "description": "Token-frugal mode for Codex, measured rather than asserted.",
+  "author": {
+    "name": "Kerim"
+  },
+  "homepage": "https://github.com/sup3x/codex-eco#readme",
+  "repository": "https://github.com/sup3x/codex-eco",
+  "license": "MIT",
+  "keywords": [
+    "tokens",
+    "cost",
+    "efficiency",
+    "eco",
+    "reasoning-effort",
+    "verbosity",
+    "codex"
+  ],
+  "skills": "./skills/"
+}

@@ -1,0 +1,55 @@
+# eco-max profile for Codex - routine chores only.
+#
+# Install:  cp profiles/eco-max.config.toml "$CODEX_HOME/eco-max.config.toml"
+# Use:      codex --profile eco-max      /  codex exec --profile eco-max "..."
+# Verify:   node scripts/prefix-audit.mjs
+#
+# Everything in the eco profile, plus the two things eco deliberately leaves
+# alone: a hard floor on reasoning effort, and the aggressive prefix tier.
+# Use it for renames, small fixes, boilerplate and lookups. For anything where
+# being wrong is expensive, use --profile eco instead.
+
+# ---------------------------------------------------------------- the big lever
+# Reasoning effort is the largest single control over spend, and it is the one a
+# Codex skill cannot set for you - only a profile or a flag can.
+#
+# The ladder differs by model and by account. As measured on 2026-08-17 the live
+# catalog reports low/medium/high/xhigh/max for every selectable model (plus
+# `ultra` on sol and terra), while the API additionally accepts `none` and
+# `minimal` on some. The CLI accepts ANY string silently, so a typo or an
+# unsupported rung fails only when the request is sent. Verify with one throwaway
+# run before trusting a value here.
+#
+# `low` is the safe floor: it exists on every model. Try `none` if your model
+# accepts it and the task is truly mechanical.
+model_reasoning_effort = "low"
+
+# Never `ultra`: it is described as maximum reasoning with automatic task
+# delegation, and the CLI itself warns it may proactively spawn multiple agents.
+# Spend becomes unbounded by fan-out rather than one step above max.
+
+# ------------------------------------------------------- aggressive prefix tier
+# Measured on the maintainer's machine: 22,290 -> 9,768 characters (-56.2%)
+# before you type anything, versus -34.1% for the safe tier.
+#
+# The extra cut comes from turning off two subsystems, so read the costs:
+[features]
+tool_suggest = false
+# Apps off: you cannot use ChatGPT apps in this session.
+apps = false
+# Plugins off: installed PLUGINS stop loading - INCLUDING eco itself if you
+# installed it as a Codex plugin. This tier is for the standalone-skill install
+# (./install.sh), where the skills in .agents/skills keep working. If you use the
+# plugin install, delete this line.
+plugins = false
+
+include_permissions_instructions = false
+include_environment_context = false
+include_apps_instructions = false
+
+project_doc_max_bytes = 4096
+tool_output_token_limit = 2000
+
+# On gpt-5.4-mini only, verbosity defaults to "medium" - every other current
+# model already defaults to "low", so this line matters on that model alone:
+# model_verbosity = "low"

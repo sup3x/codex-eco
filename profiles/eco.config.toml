@@ -1,0 +1,64 @@
+# eco profile for Codex - the safe tier.
+#
+# Install:  cp profiles/eco.config.toml "$CODEX_HOME/eco.config.toml"
+#           (Windows: copy to %USERPROFILE%\.codex\eco.config.toml)
+# Use:      codex --profile eco          /  codex exec --profile eco "..."
+# Verify:   node scripts/prefix-audit.mjs
+#
+# A profile is layered on top of your base config at launch, so nothing here
+# edits your own config.toml and switching profiles never churns a cached prefix
+# the way changing model or effort mid-thread does.
+#
+# Every key below was validated with `codex mcp-server --strict-config` and its
+# effect measured with `codex debug prompt-input` - free, offline, no model call.
+# On the maintainer's machine this tier took the pre-typing prefix from 22,290 to
+# 14,684 characters (-34.1%). Your numbers will differ; run the audit.
+
+# --------------------------------------------------------------- prompt prefix
+# The four levers in this tier, largest first. Two of them cost you something,
+# and the comment says which.
+
+# Removes the recommended-plugins advert: a list of plugins you have NOT
+# installed. Pure win - it advertises, it does not inform.
+[features]
+tool_suggest = false
+
+# Removes the escalation/permissions prose. THIS ONE HAS A COST: the model gets
+# less guidance about when to stop and ask before running something. Keep it
+# enabled (delete the line) if you rely on approval prompts to catch mistakes.
+include_permissions_instructions = false
+
+# Removes the cwd/OS/git-branch block. Small, and the cost is that the model no
+# longer knows your platform unless you tell it.
+include_environment_context = false
+
+# Removes the ChatGPT-apps instructions. Free unless you use apps from Codex.
+include_apps_instructions = false
+
+# ------------------------------------------------------------- your own inputs
+# The single largest number a user controls. Codex reads up to this many bytes of
+# AGENTS.md into EVERY thread; the default is 32768, and a 40 KB AGENTS.md
+# measured 32,959 injected characters. This is truncation, not compression - the
+# tail is simply dropped - so the real fix is a shorter AGENTS.md, and this cap
+# is the guardrail. Raise it if your instructions genuinely need the room.
+project_doc_max_bytes = 8192
+
+# Token budget for storing one tool result in the thread. Also truncation: you
+# are trading the end of long command output for tokens. Raise it if you read
+# long logs through the agent.
+tool_output_token_limit = 4000
+
+# ------------------------------------------------- deliberately NOT set here
+# model_reasoning_effort: left alone on purpose. The default is per-model, and
+#   gpt-5.6-sol already defaults to "low" - writing "medium" here would RAISE its
+#   spend. Choose effort per model, or use the eco-max profile for a deliberate
+#   floor. `codex --profile eco -c model_reasoning_effort=low` for a one-off.
+# model_verbosity: every current model except gpt-5.4-mini already defaults to
+#   "low", so setting it is a no-op for most people. If you are on gpt-5.4-mini,
+#   add: model_verbosity = "low"
+# model_reasoning_summary: every current model already defaults to "none".
+#   Setting it saves nothing.
+# hide_agent_reasoning / show_raw_agent_reasoning: display-only. Measured zero
+#   change to the prompt. They do not save tokens.
+# features.token_budget: "under development", and enabling it ADDS ~1,858
+#   characters of guidance to the prompt. Leave it off.

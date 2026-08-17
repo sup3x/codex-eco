@@ -1,0 +1,12 @@
+interface:
+  display_name: "Eco Max"
+  short_description: "The eco rules at the tightest reply budget, for routine chores"
+  default_prompt: "Use eco-max for a routine chore that should cost as little as possible."
+
+# Deliberately opted out of implicit invocation. A skill that can be triggered by
+# description matching has that description sitting in the injected context of
+# every thread; eco-max is something you reach for on purpose, so it costs
+# nothing until you type it. `eco` keeps implicit invocation, because being
+# triggerable by "how do I spend fewer tokens" is the point of it.
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,30 @@
+{
+  "name": "codex-eco",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Token-frugal skills for OpenAI Codex (CLI and the ChatGPT desktop app), with the measurement harness that keeps their claims honest.",
+  "license": "MIT",
+  "author": "Kerim",
+  "homepage": "https://github.com/sup3x/codex-eco#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sup3x/codex-eco.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sup3x/codex-eco/issues"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test \"bench/test/*.test.mjs\"",
+    "build:skills": "node scripts/build-skills.mjs",
+    "check:skills": "node scripts/build-skills.mjs --check",
+    "build:variants": "node scripts/build-variants.mjs",
+    "bench": "node bench/bench.mjs",
+    "check:repo": "node scripts/validate-repo.mjs",
+    "build:assets": "node scripts/build-assets.mjs",
+    "check:assets": "node scripts/build-assets.mjs --check",
+    "audit": "node scripts/prefix-audit.mjs"
+  }
+}

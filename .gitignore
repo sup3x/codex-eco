@@ -1,0 +1,6 @@
+*.log
+.DS_Store
+Thumbs.db
+bench/candidates/
+bench/results/
+node_modules/

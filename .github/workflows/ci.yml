@@ -1,0 +1,134 @@
+# Continuous integration for codex-eco.
+#
+# Nothing here calls a model or needs a secret: every job is a static check over
+# the checked-out tree, so anyone who forks the repo gets the same red or green.
+# The Windows job exists because the sibling project shipped a .ps1 that never
+# parsed under Windows PowerShell 5.1 for five releases - a single non-ASCII
+# character in a BOM-less file is enough, and nothing on Linux notices.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux:
+    name: tests and repository hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Assert zero npm dependencies
+        run: |
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+            for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+              const n = Object.keys(pkg[field] ?? {}).length;
+              if (n > 0) { console.error(`package.json declares ${n} ${field}; this repo ships zero`); process.exit(1); }
+            }
+            console.log("ok: zero dependencies");
+          '
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Generated skills are in sync with their source
+        run: npm run check:skills
+
+      # The rules Codex's own validators enforce, re-implemented so they can run
+      # without Codex installed. The authoritative validators are run locally
+      # before a release; see CONTRIBUTING.md.
+      - name: Manifests and skill frontmatter satisfy the Codex schema
+        run: npm run check:repo
+
+      # The README tables, the chart and the social card are all generated from
+      # bench/manifest.json. If they drift from the data, that is a failure.
+      - name: README tables and images match the published runs
+        run: npm run check:assets
+
+      - name: Rule variants differ from the shipped body in exactly one line
+        run: |
+          node scripts/build-variants.mjs > /dev/null
+          for dir in bench/candidates/*/; do
+            id="$(basename "$dir")"
+            diff_lines="$(diff <(sed 's/^name: eco.*/name: X/' plugins/eco/skills/eco/SKILL.md) \
+                               <(sed 's/^name: eco.*/name: X/' "$dir/SKILL.md") | grep -c '^[<>]' || true)"
+            if [ "$diff_lines" -gt 2 ]; then
+              echo "$id differs from the shipped body in more than one line ($diff_lines changed lines)"
+              exit 1
+            fi
+          done
+          echo "ok: every variant isolates a single line"
+
+      - name: Skill frontmatter carries the two required fields
+        run: |
+          node --input-type=module -e '
+            import { readFileSync, readdirSync } from "node:fs";
+            const root = "plugins/eco/skills";
+            let bad = 0;
+            for (const name of readdirSync(root)) {
+              const body = readFileSync(`${root}/${name}/SKILL.md`, "utf8");
+              const fm = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+              if (!fm) { console.error(`${name}: no frontmatter`); bad++; continue; }
+              for (const key of ["name", "description"]) {
+                if (!new RegExp(`^${key}:`, "m").test(fm[1])) { console.error(`${name}: missing ${key}`); bad++; }
+              }
+              const declared = fm[1].match(/^name:\s*(.+)$/m)?.[1].trim();
+              if (declared !== name) { console.error(`${name}: frontmatter name is "${declared}"`); bad++; }
+            }
+            if (bad) process.exit(1);
+            console.log("ok: skill frontmatter valid");
+          '
+
+      - name: Shell entry script is committed executable
+        run: |
+          mode="$(git ls-files -s install.sh | cut -d' ' -f1)"
+          [ "$mode" = "100755" ] || { echo "install.sh is mode $mode, expected 100755"; exit 1; }
+          echo "ok: install.sh is executable"
+
+      - name: Shellcheck
+        run: |
+          shellcheck --version
+          git ls-files -z '*.sh' | xargs -0 -r shellcheck --severity=warning
+
+  windows:
+    name: PowerShell 5.1 compatibility
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Every .ps1 parses under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $bad = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $err = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$err)
+            if ($err) { $bad++; Write-Host ("PARSE FAIL: " + $_.Name + " - " + $err[0].Message) }
+          }
+          if ($bad -gt 0) { exit 1 }
+          Write-Host "ok: all .ps1 parse"
+
+      - name: Every .ps1 is pure ASCII
+        shell: powershell
+        run: |
+          $bad = 0
+          Get-ChildItem -Recurse -Filter *.ps1 | ForEach-Object {
+            $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+            if ($bytes | Where-Object { $_ -gt 127 }) { $bad++; Write-Host ("NON-ASCII: " + $_.Name) }
+          }
+          if ($bad -gt 0) { exit 1 }
+          Write-Host "ok: all .ps1 are ASCII"

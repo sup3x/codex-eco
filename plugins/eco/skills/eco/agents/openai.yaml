@@ -1,0 +1,4 @@
+interface:
+  display_name: "Eco"
+  short_description: "Fewer tokens per turn, with a measured correctness floor"
+  default_prompt: "Use eco to work through a task with minimum token spend, or `eco setup` to write the durable savings into config.toml."
