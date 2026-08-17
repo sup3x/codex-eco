@@ -10,9 +10,10 @@
 //   node scripts/build-assets.mjs           # write assets/*
 //   node scripts/build-assets.mjs --check   # exit 1 if a committed asset is stale
 //   node scripts/build-assets.mjs --png     # also rasterise the card via headless Chrome
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
-import { join, resolve, dirname } from "node:path";
+import { join, resolve, dirname, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 // One source for every number this repository shows: the charts, both READMEs and this
 // card all read headlineFacts(), which applies the bench/headline.json gate.
@@ -24,8 +25,12 @@ import { headlineFacts } from "./build-charts.mjs";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = join(REPO, "bench", "manifest.json");
 const ASSETS = join(REPO, "assets");
-const CARD_HTML = join(ASSETS, "social-preview.html");
-const CARD_PNG = join(ASSETS, "social-preview.png");
+// One card per language. The Turkish README opened with the English card until someone
+// pointed at it, which is the kind of thing only a reader notices.
+const CARDS = [
+  { lang: "en", html: join(ASSETS, "social-preview.html"), png: join(ASSETS, "social-preview.png") },
+  { lang: "tr", html: join(ASSETS, "social-preview.tr.html"), png: join(ASSETS, "social-preview.tr.png") },
+];
 
 const CHROME_CANDIDATES = [
   "C:/Program Files/Google/Chrome/Application/chrome.exe",
@@ -49,7 +54,75 @@ export function readData() {
 
 // ------------------------------------------------------------------- the card
 
-export function renderCard(data) {
+// Both languages from one code path, for the same reason the charts are: a card that says
+// one thing in English and another in Turkish is two claims, and only one of them can be
+// checked. The Turkish README opens with the Turkish card.
+const CARD_STRINGS = {
+  en: {
+    locale: "en-US",
+    tag: "Fewer tokens per Codex turn, with a correctness floor that is measured.",
+    chip: "CLI &middot; ChatGPT desktop app",
+    beforeYouType: (lo, hi) => `${lo} to ${hi} before you type`,
+    unmeasuredHeadline: "Measured, or not claimed",
+    sub: (chars) =>
+      `the ${chars} characters of instructions Codex sends on every turn, cut by settings that are ` +
+      `verified against your own build`,
+    unmeasuredSub: "The mechanism is built and verified. The percentages wait for the study.",
+    costPerThread: (d) => `${d} cost per thread`,
+    costDetail: (model, n, p) => `rules on, ${model}, n=${n}, p=${p}`,
+    outputTokens: (d) => `${d} output tokens`,
+    outputDetail: "and the preamble turn goes to zero",
+    effortUnit: "effort batches",
+    modelUnit: "models",
+    sameDirection: (lo, hi) => `same direction, ${lo} to ${hi}`,
+    oneWentOtherWay: (lo, hi) => `one went the other way &mdash; ${lo} to ${hi}`,
+    installLabel: "install",
+    installNote:
+      "Writes the rules into <b>$CODEX_HOME/AGENTS.md</b>. Nothing to invoke, on every model and every effort.",
+    whyLabel: "why not a skill",
+    whyNote:
+      "Codex publishes a skill as one catalogue line. Its body is read with a shell command &mdash; " +
+      "an extra round trip &mdash; and the measurement says that costs more than it saves. " +
+      "<b>AGENTS.md arrives with the prompt.</b>",
+    proof: (n) => `<b>${n} runs</b> published &mdash; retractions and negative results included`,
+    unmeasuredProof: `<b>no runs</b> published yet &mdash; this card will not show a number nobody measured`,
+  },
+  tr: {
+    locale: "tr-TR",
+    tag: "Codex turu başına daha az token, ölçülmüş bir doğruluk tabanıyla.",
+    chip: "CLI &middot; ChatGPT masaüstü",
+    beforeYouType: (lo, hi) => `sen yazmadan önce ${lo} ile ${hi}`,
+    unmeasuredHeadline: "Ölçülmediyse iddia edilmez",
+    sub: (chars) =>
+      `Codex'in her turda gönderdiği ${chars} karakterlik talimat, kendi sürümünüzde ` +
+      `doğrulanmış ayarlarla kesiliyor`,
+    unmeasuredSub: "Mekanizma kurulu ve doğrulanmış. Yüzdeler çalışmayı bekliyor.",
+    // Kept to one line on the card: Turkish runs longer and a two-line title pushed the
+    // footer off the bottom of the fixed 1280x640 canvas.
+    costPerThread: (d) => `${d} konuşma maliyeti`,
+    costDetail: (model, n, p) => `kurallar açık, ${model}, n=${n}, p=${p}`,
+    outputTokens: (d) => `${d} çıktı token'ı`,
+    outputDetail: "ve önsöz turu sıfıra iniyor",
+    effortUnit: "effort partisi",
+    modelUnit: "model",
+    sameDirection: (lo, hi) => `aynı yön, ${lo} ile ${hi}`,
+    oneWentOtherWay: (lo, hi) => `biri ters yöne gitti &mdash; ${lo} ile ${hi}`,
+    installLabel: "kurulum",
+    installNote:
+      "Kuralları <b>$CODEX_HOME/AGENTS.md</b> dosyasına yazar. Çağıracak bir şey yok; her modelde, her effort'ta.",
+    whyLabel: "neden skill değil",
+    whyNote:
+      "Codex bir skill'i tek katalog satırı olarak yayınlar. Gövdesi shell komutuyla okunur &mdash; " +
+      "fazladan bir tur &mdash; ve ölçüm bunun kazandırdığından fazlasına mal olduğunu söylüyor. " +
+      "<b>AGENTS.md prompt ile gelir.</b>",
+    proof: (n) => `<b>${n} koşu</b> yayınlandı &mdash; geri çekmeler ve negatifler dahil`,
+    unmeasuredProof: `<b>Henüz koşu yok</b> &mdash; bu kart kimsenin ölçmediği bir sayıyı göstermez`,
+  },
+};
+
+
+export function renderCard(data, lang = "en") {
+  const t = CARD_STRINGS[lang];
   // The card leads with the deterministic number, not the statistical one: the prefix
   // saving is reproducible offline on the reader's own machine in one command, while the
   // behavioural saving is a range across batches with a confidence interval. Putting the
@@ -65,22 +138,19 @@ export function renderCard(data) {
   const measured = Boolean(f.prefix?.aggressive);
 
   const headline = measured
-    ? `${signed(f.prefix.safe.pct)} to ${signed(f.prefix.aggressive.pct)} before you type`
-    : "Measured, or not claimed";
-  const sub = measured
-    ? `the ${f.prefix.baseline.toLocaleString("en-US")} characters of instructions Codex sends on every ` +
-      `turn, cut by settings that are verified against your own build`
-    : "The mechanism is built and verified. The percentages wait for the study.";
+    ? t.beforeYouType(signed(f.prefix.safe.pct), signed(f.prefix.aggressive.pct))
+    : t.unmeasuredHeadline;
+  const sub = measured ? t.sub(f.prefix.baseline.toLocaleString(t.locale)) : t.unmeasuredSub;
 
   const facts = [];
   if (f.thread?.costDelta != null) {
     facts.push([
-      `${signed(f.thread.costDelta)} cost per thread`,
-      `rules on, ${f.thread.model}, n=${f.thread.n}, p=${f.thread.p.toFixed(3)}`,
+      t.costPerThread(signed(f.thread.costDelta)),
+      t.costDetail(f.thread.model, f.thread.n, f.thread.p.toFixed(3)),
     ]);
   }
   if (f.thread?.outputDelta != null) {
-    facts.push([`${signed(f.thread.outputDelta)} output tokens`, `and the preamble turn goes to zero`]);
+    facts.push([t.outputTokens(signed(f.thread.outputDelta)), t.outputDetail]);
   }
   // "N/M ... same direction" is only true when N === M. When one batch disagreed, the card
   // says so rather than quietly rounding the story up.
@@ -89,19 +159,19 @@ export function renderCard(data) {
     return [
       `${g.sign.sameDirection}/${g.sign.n} ${unit}`,
       unanimous
-        ? `same direction, ${signed(g.worst)} to ${signed(g.best)}`
-        : `one went the other way &mdash; ${signed(g.worst)} to ${signed(g.best)}`,
+        ? t.sameDirection(signed(g.worst), signed(g.best))
+        : t.oneWentOtherWay(signed(g.worst), signed(g.best)),
     ];
   };
-  if (f.efforts) facts.push(spread(f.efforts, "effort batches"));
-  if (f.models) facts.push(spread(f.models, "models"));
+  if (f.efforts) facts.push(spread(f.efforts, t.effortUnit));
+  if (f.models) facts.push(spread(f.models, t.modelUnit));
   const factHtml = facts
     .map(([big, small]) => `<div class="fact"><b>${big}</b><span>${small}</span></div>`)
     .join("\n      ");
 
   const proof = f.publishedRuns
-    ? `<b>${f.publishedRuns} runs</b> published &mdash; retractions and negative results included`
-    : `<b>no runs</b> published yet &mdash; this card will not show a number nobody measured`;
+    ? t.proof(f.publishedRuns)
+    : t.unmeasuredProof;
 
   return `<!DOCTYPE html>
 <!-- Social preview card, generated by scripts/build-assets.mjs. Every number comes from
@@ -142,22 +212,22 @@ export function renderCard(data) {
     border: 1px solid rgba(52,211,153,.42); border-radius: 999px; padding: 8px 16px;
     background: rgba(52,211,153,.09); white-space: nowrap;
   }
-  .hero { margin: 30px 0 0; z-index: 1; }
+  .hero { margin: 22px 0 0; z-index: 1; }
   .hero .big {
     font-size: 62px; font-weight: 800; color: var(--green); letter-spacing: -2px; line-height: 1;
   }
   .hero .subline {
-    font-size: 19px; color: var(--dim); margin-top: 13px; max-width: 780px; line-height: 1.45;
+    font-size: 19px; color: var(--dim); margin-top: 11px; max-width: 820px; line-height: 1.4;
   }
-  .facts { display: flex; gap: 14px; margin-top: 26px; z-index: 1; }
+  .facts { display: flex; gap: 14px; margin-top: 20px; z-index: 1; }
   .fact {
     flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
     padding: 15px 17px 14px;
   }
-  .fact b { display: block; font-size: 23px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
+  .fact b { display: block; font-size: 21px; font-weight: 800; color: var(--ink); letter-spacing: -.6px; }
   .fact span { display: block; font-size: 13.5px; color: var(--dim); margin-top: 6px; line-height: 1.35; }
   .how {
-    margin-top: 26px; display: flex; gap: 30px; align-items: flex-start; z-index: 1;
+    margin-top: 20px; display: flex; gap: 30px; align-items: flex-start; z-index: 1;
     border: 1px solid var(--line); border-radius: 12px; background: rgba(12,19,32,.72); padding: 17px 20px;
   }
   .how .col { flex: 1; }
@@ -168,7 +238,7 @@ export function renderCard(data) {
   .how .note { font-size: 13px; color: var(--dim); margin-top: 9px; line-height: 1.4; }
   footer {
     margin-top: auto; display: flex; align-items: center; justify-content: space-between;
-    font-size: 14.5px; color: var(--dim); z-index: 1; padding-top: 20px;
+    font-size: 14.5px; color: var(--dim); z-index: 1; padding-top: 14px;
   }
   footer b { color: var(--ink); }
 </style>
@@ -178,9 +248,9 @@ export function renderCard(data) {
   <header>
     <div>
       <div class="brand">codex<span class="eco">-eco</span></div>
-      <div class="tag">Fewer tokens per Codex turn, with a correctness floor that is measured.</div>
+      <div class="tag">${t.tag}</div>
     </div>
-    <div class="chip">CLI &middot; ChatGPT desktop app</div>
+    <div class="chip">${t.chip}</div>
   </header>
 
   <div class="hero">
@@ -194,18 +264,14 @@ export function renderCard(data) {
 
   <div class="how">
     <div class="col">
-      <div class="lbl">install</div>
+      <div class="lbl">${t.installLabel}</div>
       <code>git clone https://github.com/sup3x/codex-eco</code>
       <code>cd codex-eco &amp;&amp; ./install.sh</code>
-      <div class="note">Writes the rules into <b>$CODEX_HOME/AGENTS.md</b>. Nothing to invoke, on every model and every effort.</div>
+      <div class="note">${t.installNote}</div>
     </div>
     <div class="col">
-      <div class="lbl">why not a skill</div>
-      <div class="note" style="margin-top:9px">
-        Codex publishes a skill as one catalogue line. Its body is read with a shell command &mdash;
-        an extra round trip &mdash; and the measurement says that costs more than it saves.
-        <b>AGENTS.md arrives with the prompt.</b>
-      </div>
+      <div class="lbl">${t.whyLabel}</div>
+      <div class="note" style="margin-top:9px">${t.whyNote}</div>
     </div>
   </div>
 
@@ -229,25 +295,68 @@ function findChrome() {
 function rasterise() {
   const chrome = findChrome();
   if (!chrome) {
-    console.log("skipped PNG: no Chrome/Chromium found - the HTML card is still generated");
+    console.log("skipped PNG: no Chrome/Chromium found - the HTML cards are still generated");
     return false;
   }
-  execFileSync(
-    chrome,
-    [
-      "--headless",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--force-device-scale-factor=1",
-      "--window-size=1280,640",
-      `--screenshot=${CARD_PNG}`,
-      pathToFileURL(CARD_HTML).href,
-    ],
-    { stdio: "ignore" },
-  );
-  console.log(`wrote ${CARD_PNG}`);
+  for (const card of CARDS) {
+    execFileSync(
+      chrome,
+      [
+        "--headless",
+        "--disable-gpu",
+        "--hide-scrollbars",
+        "--force-device-scale-factor=1",
+        "--window-size=1280,640",
+        `--screenshot=${card.png}`,
+        pathToFileURL(card.html).href,
+      ],
+      { stdio: "ignore" },
+    );
+    console.log(`wrote ${card.png}`);
+    const overflow = cardOverflow(chrome, card.html);
+    if (overflow) {
+      throw new Error(
+        `${card.html}: content overflows the fixed 1280x640 canvas by ${overflow}px, so the card is ` +
+          `clipped. The longer language overflows first - tighten the layout rather than the text.`,
+      );
+    }
+    if (overflow === null) console.log(`  (could not measure ${basename(card.html)} for overflow)`);
+  }
   return true;
 }
+
+/**
+ * How many pixels of card content do not fit the fixed 1280x640 canvas?
+ *
+ * The card has no scrolling, so anything past 640px is simply cut off - which is how the
+ * Turkish footer went missing while the English one fitted, and text length is exactly the
+ * thing that differs between languages. Measuring it needs layout, not markup, so a probe
+ * copy of the card is rendered with a one-line script that reports the real scrollHeight,
+ * and Chrome's --dump-dom hands it back. The committed HTML stays free of that script.
+ *
+ * Returns the overflow in pixels, or null when it cannot be measured.
+ */
+function cardOverflow(chrome, html) {
+  const probe = join(tmpdir(), `codex-eco-card-probe-${basename(html)}`);
+  const probeScript =
+    `<script>document.body.setAttribute("data-overflow",` +
+    `String(Math.max(0, document.querySelector(".card").scrollHeight - 640)))</` + `script>`;
+  writeFileSync(probe, readFileSync(html, "utf8").replace("</body>", `${probeScript}</body>`), "utf8");
+  try {
+    const dom = execFileSync(chrome, ["--headless", "--disable-gpu", "--dump-dom", pathToFileURL(probe).href], {
+      encoding: "utf8",
+      maxBuffer: 32 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    const m = dom.match(/data-overflow="(\d+)"/);
+    return m ? Number(m[1]) : null;
+  } catch {
+    return null;
+  } finally {
+    rmSync(probe, { force: true });
+  }
+}
+
 
 function main() {
   const check = process.argv.includes("--check");
@@ -255,7 +364,7 @@ function main() {
   const data = readData();
   // assets/models.svg is generated by scripts/build-charts.mjs, together with every other
   // chart and both languages. This script owns the social card only.
-  const artifacts = [{ file: CARD_HTML, content: renderCard(data) }];
+  const artifacts = CARDS.map((c) => ({ file: c.html, content: renderCard(data, c.lang) }));
 
   if (check) {
     let stale = 0;

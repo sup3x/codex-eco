@@ -369,8 +369,19 @@ function checkReadmeImages(root) {
       const rel = url.slice(RAW_PREFIX.length);
       if (!existsSync(join(root, rel))) fail(file, `image link target ${rel} is not in the repository`);
     }
+    // Language must match the file. The Turkish README opened with the English social card
+    // for a full release, because nothing checked that the picture spoke the same language
+    // as the page it was on.
+    const isTr = file.endsWith(".tr.md");
+    for (const m of text.matchAll(/!\[[^\]]*\]\([^)\s]*\/assets\/([^)\s]+)\)/g)) {
+      const asset = m[1];
+      const assetIsTr = /\.tr\.(png|svg)$/.test(asset);
+      if (isTr && !assetIsTr) fail(file, `the Turkish README shows \`${asset}\`, which is the English asset`);
+      if (!isTr && assetIsTr) fail(file, `the English README shows \`${asset}\`, which is the Turkish asset`);
+    }
+
     if (!found) notes.push(`${file}: no images found, which is suspicious for this project`);
-    else notes.push(`${file}: ${found} image(s), all present and absolute`);
+    else notes.push(`${file}: ${found} image(s), all present, absolute and in the right language`);
   }
 }
 

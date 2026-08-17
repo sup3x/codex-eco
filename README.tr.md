@@ -10,7 +10,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Codex CLI](https://img.shields.io/badge/Codex%20CLI-0.147-black)](https://developers.openai.com/codex) [![Doğrulandı](https://img.shields.io/badge/do%C4%9Frulayan-Codex'in%20kendi%20do%C4%9Frulay%C4%B1c%C4%B1lar%C4%B1-brightgreen)](#buradaki-her-iddia-nasıl-doğrulandı)
 
-![codex-eco](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/social-preview.png)
+![codex-eco](https://raw.githubusercontent.com/sup3x/codex-eco/main/assets/social-preview.tr.png)
 
 ## Hızlı başlangıç
 
