@@ -59,6 +59,20 @@ jobs:
       - name: README tables and images match the published runs
         run: npm run check:assets
 
+      - name: Charts match the data they are generated from
+        run: npm run check:charts
+
+      - name: Every recorded run still grades the same under the current rubric
+        # Grading is deterministic and the raw streams are committed, so a rubric edit
+        # that would silently move a published number fails here instead of shipping.
+        run: |
+          out="$(npm run --silent check:grades)"
+          echo "$out"
+          if echo "$out" | grep -q '^CHANGED'; then
+            echo "::error::a stored batch grades differently than its summary says - run 'npm run regrade -- --write'"
+            exit 1
+          fi
+
       - name: Rule variants differ from the shipped body in exactly one line
         run: |
           node scripts/build-variants.mjs > /dev/null

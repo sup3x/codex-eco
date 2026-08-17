@@ -139,6 +139,50 @@ export function summarizeRun(events, id = "?") {
   };
 }
 
+/**
+ * Fold a multi-turn run's per-turn summaries into one record.
+ *
+ * Usage is summed because that is what the thread bills: turn 2 re-sends turn 1's
+ * history, so an always-on instruction block is paid for once per turn while the
+ * output it saves is also saved once per turn. A single-turn measurement cannot see
+ * that trade at all, which is why this exists.
+ *
+ * `result` stays the FIRST turn's answer so the review rubric keeps grading the same
+ * thing it graded in every earlier batch; every turn's text is kept in `results`.
+ */
+export function mergeTurns(turns, id = "?") {
+  if (!turns.length) throw new RunError(`${id}: no turns to merge`);
+  const sum = (k) => turns.reduce((a, t) => a + (t[k] ?? 0), 0);
+  return {
+    id,
+    turns: turns.length,
+    perTurn: turns.map((t, i) => ({
+      turn: i + 1,
+      inputTokens: t.inputTokens,
+      cachedInputTokens: t.cachedInputTokens,
+      outputTokens: t.outputTokens,
+      reasoningTokens: t.reasoningTokens,
+      commandCount: t.commandCount,
+      preambleCount: t.preambleCount,
+      threadId: t.threadId,
+    })),
+    inputTokens: sum("inputTokens"),
+    cachedInputTokens: sum("cachedInputTokens"),
+    cacheWriteTokens: sum("cacheWriteTokens"),
+    outputTokens: sum("outputTokens"),
+    reasoningTokens: sum("reasoningTokens"),
+    commandCount: sum("commandCount"),
+    preambleCount: sum("preambleCount"),
+    commands: turns.flatMap((t) => t.commands ?? []),
+    threadId: turns[0].threadId,
+    result: turns[0].result,
+    results: turns.map((t) => t.result),
+    errors: turns.flatMap((t) => t.errors ?? []),
+    turnFailed: turns.some((t) => t.turnFailed),
+    events: sum("events"),
+  };
+}
+
 /** Problems that disqualify a run from being scored. Empty array = clean. */
 export function validateRun(summary, { exitCode } = {}) {
   const problems = [];
@@ -165,6 +209,7 @@ export function validateRun(summary, { exitCode } = {}) {
  * @param {string} [opts.model]     --model
  * @param {string} [opts.effort]    -c model_reasoning_effort=...
  * @param {string} [opts.verbosity] -c model_verbosity=...
+ * @param {string} [opts.resumeFrom] thread id to continue instead of starting fresh
  */
 export async function runArm({
   prompt,
@@ -181,12 +226,20 @@ export async function runArm({
   retries = 1,
   bin = "codex",
   extraArgs = [],
+  resumeFrom = null,
 }) {
-  const args = ["exec", "--json"];
-  if (approveForMe) args.push("--approve-for-me");
+  const args = ["exec"];
+  // `exec resume <id>` continues a recorded thread, which is how a multi-turn run is
+  // measured: every turn after the first re-sends the whole history, so the economics
+  // of an always-on instruction block only show up here. Subcommand comes before flags.
+  if (resumeFrom) args.push("resume", resumeFrom);
+  args.push("--json");
+  // `exec resume` rejects --approve-for-me and --sandbox: approval and sandbox policy
+  // are properties of the session being resumed, not of this invocation.
+  if (approveForMe && !resumeFrom) args.push("--approve-for-me");
   if (skipGitRepoCheck) args.push("--skip-git-repo-check");
   if (model) args.push("--model", model);
-  if (sandbox) args.push("--sandbox", sandbox);
+  if (sandbox && !resumeFrom) args.push("--sandbox", sandbox);
   if (effort) args.push("-c", `model_reasoning_effort=${effort}`);
   if (verbosity) args.push("-c", `model_verbosity=${verbosity}`);
   if (serviceTier) args.push("-c", `service_tier=${serviceTier}`);

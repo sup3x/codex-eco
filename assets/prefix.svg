@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="304" viewBox="0 0 900 304" role="img" aria-label="What a Codex session costs before you type a character">
+<title>What a Codex session costs before you type a character</title>
+<rect width="900" height="304" rx="14" fill="#0b111c"/>
+<text x="28" y="34" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#e8ecf3">What a Codex session costs before you type a character</text>
+<text x="28" y="58" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#8e99ac">codex-cli 0.147.0 · recorded 2026-08-17 · the prefix Codex sends on every turn</text>
+<text x="168" y="101" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">as installed</text>
+<text x="168" y="117" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">21 skills in the catalogue</text>
+<rect x="188" y="89" width="344.0" height="17" rx="5" fill="#3f4a5f"/>
+<text x="546" y="100" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">20,122 chars</text>
+<text x="546" y="116" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">about 5,031 tokens, every turn</text>
+<text x="168" y="147" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">eco profile</text>
+<text x="168" y="163" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">four settings, nothing you lose</text>
+<rect x="188" y="135" width="225.1" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="146" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">13,166 chars</text>
+<text x="546" y="162" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">about 3,292 tokens, every turn</text>
+<text x="876" y="152" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−35%</text>
+<text x="168" y="193" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">eco-max profile</text>
+<text x="168" y="209" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">also turns apps and plugins off</text>
+<rect x="188" y="181" width="141.0" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="192" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">8,250 chars</text>
+<text x="546" y="208" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">about 2,063 tokens, every turn</text>
+<text x="876" y="198" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−59%</text>
+<text x="28" y="240" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Deterministic, not statistical: `codex debug prompt-input` renders the model-visible input offline.</text>
+<text x="28" y="258" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">`node scripts/prefix-audit.mjs` reproduces this on your machine, with your skills, and calls no model.</text>
+<text x="28" y="276" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Characters are measured; the token figure is chars/4, an estimate. Your catalogue size sets your total.</text>
+</svg>

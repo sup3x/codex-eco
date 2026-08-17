@@ -37,6 +37,30 @@ export const TARGETS = [
       },
     ],
   },
+  {
+    id: "agents-md",
+    template: join(REPO, "scripts", "agents-md.template.md"),
+    out: join(REPO, "AGENTS.eco.md"),
+    transforms: [
+      {
+        why:
+          "in AGENTS.md there is no mode to announce - the rules are simply on - but the " +
+          "no-preamble instruction they wrap is the one that measured the largest effect, so it stays",
+        from: "no statement of intent, and no announcement that this mode is active.",
+        to: "and no statement of intent.",
+      },
+      {
+        why: "a repo instruction file cannot talk about a skill's own reference files",
+        from:
+          "- When the remaining work no longer depends on the earlier history, start a new context " +
+          "window rather than dragging tens of thousands of tokens forward.",
+        to:
+          "- When the remaining work no longer depends on the earlier history, start a new context " +
+          "window rather than dragging tens of thousands of tokens forward.\n" +
+          "- These rules are always on in this repository; there is no mode to switch and nothing to invoke.",
+      },
+    ],
+  },
 ];
 
 export function extractRules(ecoBody, sourceLabel = "plugins/eco/skills/eco/SKILL.md") {

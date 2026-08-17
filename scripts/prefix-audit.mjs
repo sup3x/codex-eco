@@ -99,7 +99,50 @@ function runPromptInput({ prompt, model, extra = [], bin = "codex" }) {
     const tag = text.match(/^<([a-z_]+)>/)?.[1] ?? "plain";
     sections.set(tag, (sections.get(tag) ?? 0) + text.length);
   }
-  return { total, sections: [...sections.entries()].map(([tag, chars]) => ({ tag, chars })).sort((a, b) => b.chars - a.chars) };
+  return {
+    total,
+    text: items.map((it) => (it.content ?? []).map((c) => c.text ?? "").join("")).join("\n"),
+    sections: [...sections.entries()].map(([tag, chars]) => ({ tag, chars })).sort((a, b) => b.chars - a.chars),
+  };
+}
+
+// Codex resolves standalone skills from the project's `.agents/skills`, `$HOME/.agents/skills`
+// and a machine-wide root, and publishes ALL of them. Two copies of one skill therefore
+// appear twice in the catalogue under the same name: every turn pays for both descriptions,
+// and `$name` is ambiguous. It is easy to end up here by installing a skill twice, or by
+// installing it standalone and as a plugin. The audit reports it because the fix is free.
+export function findDuplicateSkills(text) {
+  const byName = new Map();
+  for (const m of String(text).matchAll(/^- ([A-Za-z0-9:_-]+):([\s\S]*?)\(file: ([^)]+)\)/gm)) {
+    const name = m[1];
+    if (!byName.has(name)) byName.set(name, []);
+    byName.get(name).push({ file: m[3], descChars: m[2].length });
+  }
+  return [...byName.entries()]
+    .filter(([, copies]) => copies.length > 1)
+    .map(([name, copies]) => ({
+      name,
+      copies,
+      wastedChars: copies.slice(1).reduce((a, c) => a + c.descChars, 0),
+    }));
+}
+
+function duplicateReport(duplicates) {
+  if (!duplicates.length) return "";
+  const lines = [
+    "Duplicate skills in your catalogue. Codex lists every root it finds a skill in, so each",
+    "copy's description is billed on every turn and `$name` no longer names one body:",
+    "",
+  ];
+  for (const d of duplicates) {
+    lines.push(`  ${d.name} - ${d.copies.length} copies, ~${d.wastedChars} chars of pure duplication`);
+    for (const c of d.copies) lines.push(`      ${c.file}`);
+  }
+  lines.push("");
+  lines.push("  Keep one. `./install.sh --uninstall` removes the copies this project installs; a plugin");
+  lines.push("  copy is removed with `codex plugin remove <name>@<marketplace>`.");
+  lines.push("");
+  return `${lines.join("\n")}\n`;
 }
 
 /** Confirm a key is real before we ever suggest it. Free: no model call. */
@@ -145,6 +188,8 @@ function main() {
     );
     return 2;
   }
+
+  const duplicates = findDuplicateSkills(base.text);
 
   const results = TIERS.map((tier) => {
     const measured = runPromptInput({ prompt, model, extra: tier.args });
@@ -206,7 +251,7 @@ function main() {
     `\nTo apply a tier, copy the matching profile and launch with it:\n` +
       `  cp profiles/eco.config.toml "$CODEX_HOME/eco.config.toml"   # or %USERPROFILE%\\.codex\\ on Windows\n` +
       `  codex --profile eco\n\n` +
-      `Not included in these numbers: the model's own base instructions (a further ~17.7k chars on the\n` +
+      `${duplicateReport(duplicates)}Not included in these numbers: the model's own base instructions (a further ~17.7k chars on the\n` +
       `5.6 family, which no setting reaches), tool schemas, and your conversation. AGENTS.md IS included,\n` +
       `so run this inside a real project to see what yours costs - project_doc_max_bytes caps it at 32,768\n` +
       `bytes by default, which is the single largest number a user controls.`,

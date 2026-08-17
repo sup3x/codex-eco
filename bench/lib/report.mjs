@@ -33,9 +33,15 @@ export const ARM_HEADERS = ["arm", "n", "mean out", "median", "range", "sd", "co
 export const ARM_ALIGN = ["", "right", "right", "right", "right", "right", "right", "right"];
 
 /** Comparison block: percent change, bootstrap CI, Mann-Whitney p. */
-export function comparisonLines(cmp, { baselineName = "baseline", treatmentName = "treatment" } = {}) {
+// `metric` is not decoration: the same function reports weighted cost and output
+// tokens, and a block labelled "weighted cost" whose lines said "output tokens" was
+// exactly the kind of mislabelling that makes a number get quoted for the wrong thing.
+export function comparisonLines(
+  cmp,
+  { baselineName = "baseline", treatmentName = "treatment", metric = "output tokens" } = {},
+) {
   const lines = [
-    `${treatmentName} vs ${baselineName}: ${fmtPct(cmp.pctChange, 1)} output tokens ` +
+    `${treatmentName} vs ${baselineName}: ${fmtPct(cmp.pctChange, 1)} ${metric} ` +
       `(ratio of means ${fmtNum(cmp.ratioOfMeans, 3)})`,
   ];
   if (cmp.ci95) {

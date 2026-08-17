@@ -1,6 +1,6 @@
 # codex-eco — eco mode for Codex
 
-**Your Codex session already costs you ~5,500 tokens before you type a character. `codex-eco` measures that, cuts a third of it with settings that are real, and ships behavioural rules whose effect on a live model was benchmarked rather than assumed — including the models where the rules make things worse.**
+**Your Codex session already costs you ~5,500 tokens before you type a character. `codex-eco` measures that with a free offline audit, cuts a third of it with settings that are verified against your own Codex build, and installs behavioural rules through the one channel that costs nothing to deliver — including the measurements that told us the obvious channel was the wrong one.**
 
 Works in **Codex CLI** and in **Codex inside the ChatGPT desktop app**. One install covers both.
 
@@ -16,22 +16,100 @@ Works in **Codex CLI** and in **Codex inside the ChatGPT desktop app**. One inst
 git clone https://github.com/sup3x/codex-eco && cd codex-eco && ./install.sh
 ```
 
-Then, in a new Codex session:
+Windows: `.\install.ps1`.
+
+That is the whole setup. **There is nothing to invoke** — the rules go into `$CODEX_HOME/AGENTS.md`, which Codex loads into the prompt on every turn, at every reasoning effort, on every model, in the CLI and in the desktop app alike. Open a new session and it is on.
+
+```
+$ ./install.sh
+codex-eco
+  rules:      /home/you/.codex/AGENTS.md (global, short block)
+  skills dir: /home/you/.agents/skills (default)
+  rules: block appended to /home/you/.codex/AGENTS.md (short; previous file at .../.eco-backups/AGENTS.md-20260817-135234)
+  eco: installed and verified (3 files)
+  eco-max: installed and verified (2 files)
+```
+
+The block is delimited by `<!-- codex-eco:start -->` / `<!-- codex-eco:end -->`, so re-running replaces it in place instead of appending a second copy, `--uninstall` removes exactly it and leaves the rest of your file untouched, and anything about to change is copied to `.eco-backups/` first. Both installers produce byte-identical files.
+
+| | What | When |
+|---|---|---|
+| `./install.sh` | rules globally + both skills | the default |
+| `./install.sh --project` | rules into this repo's `AGENTS.md` | you want it per-project, or in a repo you share |
+| `./install.sh --full` | the complete 3.6 kB rule block instead of the 1.1 kB one | you would rather have every rule than the cheapest block |
+| `./install.sh --rules-only` / `--skills-only` | one half | you only want one |
+| `./install.sh --uninstall` | removes the block and the skills | |
+
+The skills stay available for two jobs the rules file cannot do:
 
 | | Codex CLI | Codex in the ChatGPT desktop app |
 |---|---|---|
-| Turn it on | `$eco` | `@eco` |
-| With a task | `$eco fix the failing test in orders.js` | `@eco fix the failing test in orders.js` |
 | Configure your setup | `$eco setup` | `@eco setup` |
+| Turn the mode on for one thread | `$eco <task>` | `@eco <task>` |
 
-`$eco` on its own answers exactly `Eco mode active.` — if you see that string, it loaded.
+Invoking a skill costs one extra shell round trip, for a reason worth understanding before you rely on it — see [why the rules do not live in the skill](#why-the-rules-live-in-agentsmd-and-not-in-the-skill).
 
-Windows: `.\install.ps1`. Both installers back up anything they replace and support `--uninstall` / `-Uninstall`.
+## Why the rules live in AGENTS.md and not in the skill
+
+This is the project's main finding, and it cost a retraction to learn.
+
+![Cost of one three-turn thread, three ways of delivering the same rules](assets/surfaces.svg)
+Codex publishes a skill to the model as **one catalogue line** — name, description, and a path:
+
+```
+- eco: Token-frugal mode for Codex - fewer tokens per turn ... (file: ~/.agents/skills/eco/SKILL.md)
+```
+
+The body is not in the prompt. You can see this for yourself without spending a token, because
+`codex debug prompt-input` renders the exact model-visible input list offline:
+
+```bash
+codex debug prompt-input '$eco review src/app.ts' > with.json
+codex debug prompt-input 'review src/app.ts'      > without.json
+diff with.json without.json      # they differ by five bytes: the literal "$eco "
+```
+
+Three consequences follow, and all three are measurable:
+
+1. **The rules only apply after the agent reads the file.** That read is a shell command — a full extra
+   round trip, and a round trip re-sends the entire prefix. Measured on `gpt-5.6-terra`, invoking `$eco`
+   raised cached input from 28.2k to 43.7k tokens on a single-turn task.
+2. **The one rule with the largest measured effect cannot work through a skill at all.** "Your first
+   output is a tool call, not an announcement" is violated *before* the body is read: at the moment the
+   model decides to invoke a skill, it has seen only the description. In 5/5 runs it announced the mode,
+   then read the rule telling it not to. No wording fixes this; it is the invocation order.
+3. **Whether the body gets read is a model decision, not a guarantee.** Re-scanning every run this
+   project ever recorded for a command touching `SKILL.md` found 10/10 reads in some batches and **1/20
+   in others**. Two whole studies had therefore compared a baseline against itself, and their results are
+   retracted in `bench/preregistration/001-first-study.md` rather than quietly deleted.
+
+`AGENTS.md` has none of these properties. Codex injects it verbatim, inside `<INSTRUCTIONS>`, with no
+round trip and no decision to make — confirmed the same free offline way, by planting a marker string in
+the file and finding it in the rendered prompt. That is why the installer's primary act is to write the
+block, and why the skill is documented as the secondary path.
+
+**What the skill is still for.** `$eco setup` — reading your config, proposing the levers, applying
+nothing without confirmation — is a one-shot job where an extra round trip is irrelevant. And invoking
+`$eco` mid-thread is the only way to turn the discipline on in a repository whose `AGENTS.md` you do not
+control.
+
+## Two costs, and only one of them needs statistics
+
+Keeping these apart is the difference between an honest claim and a marketing number:
+
+| | How it is measured | How stable it is |
+|---|---|---|
+| **The fixed prefix** — the skills catalogue, the plugin advert, the instruction prose sent before you type | `codex debug prompt-input`, offline, no model call | Deterministic. Run it twice, get the same bytes. Reported as exact character counts. |
+| **The rules' effect on behaviour** | A live model, n=5 per arm, arms interleaved in one batch, deterministic grading | Noisy. On this task a single batch cannot settle a direction, so the bar is the direction repeating across independent batches and the published effect is a range. |
+
+The audit is the part you can verify on your own machine in one second. The behavioural numbers are the
+part this repository argues about at length, in the open, including where they came out against us.
 
 ## See where your tokens go — before spending any
 
 The most useful thing in this repository costs nothing to run and makes no model call:
 
+![What a Codex session costs before you type a character](assets/prefix.svg)
 ```bash
 node scripts/prefix-audit.mjs
 ```
@@ -59,26 +137,51 @@ Those are real numbers from one machine, produced by `codex debug prompt-input` 
 
 | Component | What it does |
 |---|---|
-| **`eco` skill** | Behavioural rules with a non-negotiable correctness floor. One invocation covers the thread. `eco setup` proposes the config changes and applies nothing without confirmation. |
-| **`eco-max` skill** | The same rules at the tightest reply budget, for routine chores. Generated from `eco`, so the two cannot drift. |
+| **`AGENTS.eco.lean.md`** | The rules block the installer writes by default: 1.1 kB, hand-curated down to the lines that carried the measured effect. `AGENTS.md` is re-sent on every request, so this file's size is a per-turn cost — CI fails if it grows past 1,600 bytes. |
+| **`AGENTS.eco.md`** | The complete rule block, 3.6 kB, generated from the `eco` skill body so the two cannot drift. `./install.sh --full` installs this instead. |
+| **`eco` skill** | `$eco setup` reads your config, proposes the levers and applies nothing without confirmation. Invoking `$eco <task>` turns the discipline on inside one thread, at the cost of one round trip. |
+| **`eco-max` skill** | The same rules at the tightest reply budget, for routine chores. Generated from `eco`. |
 | **`profiles/eco.config.toml`** | The safe prefix tier: four verified settings plus two caps. `codex --profile eco`. |
 | **`profiles/eco-max.config.toml`** | Adds a reasoning-effort floor and the aggressive prefix tier. |
-| **`AGENTS.eco.md`** | The same discipline as a repo-level block, for when you want it always on without invoking a skill. |
-| **`scripts/prefix-audit.mjs`** | The free, offline audit above. |
-| **`bench/`** | The measurement harness, the deterministic grader, the provenance manifest and the pre-registrations behind every number here. |
+| **`scripts/prefix-audit.mjs`** | The free, offline audit below. Validates every key it suggests against your own Codex build before offering it. |
+| **`scripts/cost-report.mjs`** | Re-scores any recorded batch on what a turn actually bills, not just output tokens. |
+| **`bench/`** | The harness, the deterministic grader, the provenance manifest, and the pre-registrations — including the retractions. |
 
 ## Measured results
 
 <!-- codex-eco:results:start -->
-_No headline study has been published yet. `node scripts/build-assets.mjs` fills this section from `bench/manifest.json` once runs are published._
+### 1. The fixed prefix — deterministic, no statistics
+
+On codex-cli 0.147.0, with 21 skills in the catalogue, the instruction prefix sent before you type is **20,122 characters** (~5,031 tokens). The safe profile takes it to **13,166** (**-34.6%**) and the aggressive one to **8,250** (**-59.0%**). Reproduce it on your own machine in one command: `node scripts/prefix-audit.mjs`.
+
+### 2. Three ways to deliver the rules
+
+`gpt-5.6-terra`, the model's default effort, n=5 per arm, arms interleaved in one batch. Each run is one three-turn thread — review, patch, open question — with usage summed over the thread.
+
+| Arm | cost | vs baseline | output | cmds | preamble | both bugs |
+|---|---:|---:|---:|---:|---:|---|
+| `no rules` | 49,818 | — | 1,993 | 1.4 | 1.00 | 5/5 |
+| `$eco skill` | 63,471 | **+27.4%** (95% CI 19.1% .. 37.7%, p = 0.008) | 2,462 | 2.0 | 1.00 | 5/5 |
+| `AGENTS.md full` | 45,601 | **−8.5%** (95% CI −18.8% .. 3.7%, p = 0.222) | 1,328 | 2.0 | 0.00 | 5/5 |
+| `AGENTS.md short` | 41,856 | **−16.0%** (95% CI −26.1% .. −5.6%, p = 0.032) | 1,248 | 1.4 | 0.00 | 5/5 |
+
+Every arm found both planted bugs in every run, so cheapness decides. The short block wins; the `$eco` skill loses significantly — [why is above](#why-the-rules-live-in-agentsmd-and-not-in-the-skill).
+
+### 3. Replicated at every reasoning effort
+
+![Replication across effort levels](assets/efforts.svg)
+
+The shipped block was run against no rules in 5 independent batches on `gpt-5.6-terra` (n=3 per arm): **5/5 batches moved the same way**, two-sided sign test p = 0.063. The effect ranged from **−7.0% to −25.1%**, and both planted bugs were found at every level in every run. The published number is that range, not any one batch.
+
+The trend is clear and its mechanism is plausible: the higher the effort, the longer the baseline's output, so the more fat there is to cut.
 <!-- codex-eco:results:end -->
 
 ## What the rules actually target
 
 Every rule exists because the unarmed agent was observed doing the thing it forbids, in a real transcript:
 
-1. **The preamble turn.** Codex opens with a message announcing what it is about to do — *"I'll inspect the test file and its nearby project context, then summarize"* — and only then runs a command. That is a billed turn that moves no work forward. The rule that suppresses it was chosen by measuring four candidate wordings against each other (see [Part A](bench/preregistration/001-first-study.md)).
-2. **The unasked survey.** Asked to review one file, the unarmed agent also ran `Get-ChildItem -Force` and a tree-wide `rg -n "orders" .` — a directory listing and a full-tree grep nobody requested. The armed arms ran one command instead of 1.4.
+1. **The preamble turn.** Codex opens with a message announcing what it is about to do — *"I'll inspect the test file and its nearby project context, then summarize"* — and only then runs a command. That is billed output that moves no work forward, and it is the single most reliable effect in this repository: **1.00 preambles per run without the block, 0.00 with it, in every batch measured**. An earlier attempt to pick the best wording for this rule by A/B-testing four phrasings is [retracted](bench/preregistration/001-first-study.md) — 19 of its 20 runs never loaded the rules at all — so the wording shipped is the one that was measured working, not one that won a comparison.
+2. **The unasked survey.** Asked to review one file, the unarmed agent also ran `Get-ChildItem -Force` and a tree-wide `rg -n "orders" .` — a directory listing and a full-tree grep nobody requested. On the three-turn thread the block keeps the command count at the baseline's 1.4 while cutting output 37%, so it is removing waste rather than trading one cost for another.
 3. **Whole-file dumps.** Codex has no editor tools; everything is a shell command. So the rules are about command hygiene — ask for the region (`sed -n`, `Get-Content -TotalCount`), `rg -l` before `rg -n`, batch independent commands into one call, `apply_patch` instead of rewriting a file through the shell.
 4. **Thread growth.** Codex has a `new_context` tool the model itself can call, and its own guidance says compactions can cost accuracy. The rules say: start a fresh context when the history stops mattering, and never switch model or effort mid-thread — measured, that drops the cached-prefix ratio from 0.95 to 0.07.
 
@@ -132,9 +235,12 @@ codex plugin marketplace add sup3x/codex-eco
 codex plugin add eco@codex-eco
 ```
 
-Measured difference: invoking the plugin-installed skill cost 35 output tokens against 131 for the standalone copy, because on the standalone path the agent reads `SKILL.md` with a shell command while a plugin supplies the body directly. The plugin path is cheaper to activate; the standalone path is the one the desktop app reads. Installing both is fine.
+**Retracted claim.** An earlier version of this README said a plugin "supplies the body directly" and was therefore cheaper to invoke. That is wrong. Rendering the prompt with the plugin installed shows the same single catalogue line and no body — a plugin-installed skill is read from disk exactly like a standalone one. The 35-versus-131-token observation behind the claim was one unreplicated pair of runs, and its stated explanation did not survive checking.
 
-Note that the aggressive profile turns the plugin subsystem off — pair it with the standalone install, not the plugin one.
+**Installing both is worse than installing one.** Codex publishes every root it finds a skill in, so a standalone copy and a plugin copy appear as *two* catalogue entries with the same name: both descriptions are billed on every turn, and `$eco` no longer names one body. `node scripts/prefix-audit.mjs` reports duplicates it finds, and the benchmark harness now refuses to run a batch whose skill name is ambiguous — a defect it found in every batch this project had run until then.
+
+Note that the aggressive profile turns the plugin subsystem off, so it pairs with the standalone install, not the plugin one.
+
 
 ### The profiles
 
@@ -144,11 +250,6 @@ codex --profile eco
 ```
 
 A profile is layered at launch, so it never invalidates a cached prefix the way changing model or effort mid-thread does, and uninstalling is deleting one file.
-
-## Two things a Codex skill cannot do
-
-1. **It cannot change reasoning effort.** Codex skill frontmatter accepts `name`, `description` and `metadata` only — there is no effort field, unlike the Claude Code sibling of this project. Effort comes from a profile or a flag, which is why `eco-max` ships as both a skill and a profile.
-2. **A hook cannot rewrite shell output.** Codex hooks carry `permissionDecision`, `updatedInput`, `additionalContext` and `updatedMCPToolOutput`; there is no field for rewriting a shell result. `tool_output_token_limit` does that job natively, so this project ships no hooks at all.
 
 ## Related work
 

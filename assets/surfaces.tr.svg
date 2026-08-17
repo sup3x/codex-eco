@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="368" viewBox="0 0 900 368" role="img" aria-label="Aynı kurallar, üç taşıma yolu — üç turluk bir konuşmanın maliyeti">
+<title>Aynı kurallar, üç taşıma yolu — üç turluk bir konuşmanın maliyeti</title>
+<rect width="900" height="368" rx="14" fill="#0b111c"/>
+<text x="28" y="34" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#e8ecf3">Aynı kurallar, üç taşıma yolu — üç turluk bir konuşmanın maliyeti</text>
+<text x="28" y="58" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#8e99ac">gpt-5.6-terra · (model varsayılanı) effort · kol başına n=5, tek partide dönüşümlü · incele, düzelt, açık uçlu soru</text>
+<text x="168" y="101" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">kural yok</text>
+<text x="168" y="117" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">düz Codex</text>
+<rect x="188" y="89" width="248.0" height="17" rx="5" fill="#3f4a5f"/>
+<text x="518" y="100" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">49.8k maliyet birimi</text>
+<text x="518" y="116" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1993 çıktı · 1.4 komut · 1.0 önsöz · 5/5 hata</text>
+<text x="168" y="147" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">$eco skill</text>
+<text x="168" y="163" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">kullanımda diskten okunur</text>
+<rect x="188" y="135" width="316.0" height="17" rx="5" fill="#f87171"/>
+<text x="518" y="146" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">63.5k maliyet birimi</text>
+<text x="518" y="162" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">2462 çıktı · 2.0 komut · 1.0 önsöz · 5/5 hata</text>
+<text x="876" y="152" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#f87171">+27%</text>
+<text x="168" y="193" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">AGENTS.md tam</text>
+<text x="168" y="209" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">3.6 kB blok</text>
+<rect x="188" y="181" width="227.0" height="17" rx="5" fill="#34d399"/>
+<text x="518" y="192" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">45.6k maliyet birimi</text>
+<text x="518" y="208" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1328 çıktı · 2.0 komut · 0.0 önsöz · 5/5 hata</text>
+<text x="876" y="198" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−8%</text>
+<text x="168" y="239" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">AGENTS.md kısa</text>
+<text x="168" y="255" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1.1 kB blok — dağıtılan</text>
+<rect x="188" y="227" width="208.4" height="17" rx="5" fill="#34d399"/>
+<text x="518" y="238" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">41.9k maliyet birimi</text>
+<text x="518" y="254" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1248 çıktı · 1.4 komut · 0.0 önsöz · 5/5 hata</text>
+<text x="876" y="244" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−16%</text>
+<text x="28" y="286" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Maliyet birimi = önbelleksiz girdi x1 + önbellekli girdi x0.1 + çıktı x8; GPT-5 sınıfı fiyat oranları.</text>
+<text x="28" y="304" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Çıktı, bir Codex turunun faturasının üçte birinden az; başlık metrik bu yüzden o değil.</text>
+<text x="28" y="322" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Her kol, her koşuda iki hatayı da buldu; karar ucuzluğa kalıyor. %95 GA −26% .. −6%, p = 0.032</text>
+<text x="28" y="340" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Skill'in gövdesi shell komutuyla okunur; AGENTS.md prompt ile gelir. Fark tam olarak bu.</text>
+</svg>

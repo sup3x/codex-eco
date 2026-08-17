@@ -49,13 +49,21 @@ const AVG_LOCATION = [
   /:20[)\]]/,
 ];
 
+// Widened twice, both times because a run had plainly found the bug and the pattern
+// had not. The first miss was `/\bthrows?\b/` against Codex's "throwing"; the second was
+// `empty (array|list|items)` against "empty ORDERS also need explicit handling", which is
+// the same finding in the vocabulary of the fixture's domain. A criterion that only
+// accepts one phrasing measures phrasing, not correctness. Every widening is applied by
+// re-grading every stored run of every arm, and the before/after is published.
 const DIV_ZERO_MODE = [
   /\bNaN\b/,
   /divide?s? by (?:zero|0)/i,
   /division by (?:zero|0)/i,
   /0\s*\/\s*0/,
   /\/\s*0\b/,
-  /empty (?:array|list|items)/i,
+  /empty (?:array|list|items?|orders?|inputs?|carts?|collections?)/i,
+  /\bno items\b/i,
+  /zero[- ](?:length|items|elements)/i,
 ];
 
 const PROTO_MODE = [

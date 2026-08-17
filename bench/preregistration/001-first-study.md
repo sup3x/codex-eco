@@ -250,3 +250,283 @@ Endpoints, fixed now:
 - **Gate:** both planted bugs in every eco run at every effort. Any miss is published per-effort.
 - If the direction is not 4/4, the README says the effect is not resolvable at n=5 per batch on this
   task and reports the batch-to-batch spread instead of a percentage.
+
+---
+
+## Retraction of Part A and Part B, and Amendment 4 — the treatment was never applied
+
+Everything above that compares a skill arm to a baseline is void. This section explains how, because
+the mechanism matters more than the numbers it destroys.
+
+**What Codex actually puts in the prompt.** `codex debug prompt-input` renders the exact model-visible
+input list offline, for free. Rendering `$eco <task>` and `<task>` in the same repository produces
+prompts that differ by **five bytes** — the literal string `$eco `. There is no client-side expansion.
+What the model receives about a skill is one catalogue line inside `<skills_instructions>`:
+
+```
+- eco: Token-frugal mode for Codex - fewer tokens per turn ... (file: .../.agents/skills/eco/SKILL.md)
+```
+
+Name, description, and a path. **The rules are not in the prompt.** For them to apply, the agent must
+decide to run a shell command that reads `SKILL.md`, and only the turns after that read are governed.
+
+**How often did that happen?** Every recorded run was re-scanned for a command touching `SKILL.md`:
+
+| batch | skill runs | runs that read SKILL.md |
+|---|---:|---:|
+| `partA-preamble` (4 variant arms) | 20 | **1** |
+| `partB2-body-length` (2 arms) | 10 | **0** |
+| `effort-low` | 5 | 5 |
+| `effort-medium` | 5 | 5 |
+
+So Part A's four "preamble phrasings" were 20 runs of the same untreated condition, and its winner
+(`p3-first-action`, −14.9% weighted) won on noise. Part B and Part B-2 likewise compared a baseline
+against itself. That also explains the puzzle Amendment 3 was built to handle: the "between-batch
+variance exceeding the treatment effect" was not service-side routing, it was **arms that were not
+different from each other**. Amendment 3's sign-test design stands as a method; its motivation was wrong.
+
+Nothing in this project's published claims survives from those parts, and nothing was published from
+them — `bench/headline.json` gated the README precisely because no number had reproduced. The raw
+streams stay on disk; they are now evidence about invocation reliability instead of about rules.
+
+**The second finding, from the same re-scan: output tokens are the minority of the bill.** A
+one-command review turn on 5.6-terra billed 31,286 input tokens against 392 output. Every shell round
+trip re-sends the whole prefix, so a round trip costs more than a short answer does. Weighting the
+recorded usage at the GPT-5-class price ratios (uncached input 1 : cached input 0.1 : output 8) puts
+output at **26–31% of the total in every batch measured**. Scoring output alone ranked designs by
+their smaller half, and it hid the real cost of the skill read: at `low` and `medium` effort, where the
+skill *was* read 10/10 times, eco came out **+9.1% and +30.9% more expensive** than the baseline, and
+at `medium` it also lost quality (crash bug 4/5, NaN bug 3/5 against 5/5 and 5/5).
+
+**Amendment 4 — the mechanism study.** Codex loads `AGENTS.md` into the prompt itself, verbatim, inside
+`<INSTRUCTIONS>`; this was confirmed with `prompt-input` by planting a marker string. That path carries
+the same rules with **no round trip**, on every turn, at every effort, on every model, in the CLI and in
+the ChatGPT desktop app alike. Which delivery mechanism is cheaper is now the project's central
+question, and it replaces the effort sweep as the next study.
+
+Three arms, interleaved in one batch, `gpt-5.6-terra`, n=5, same fixture and task as every batch above:
+
+1. `baseline` — no rules.
+2. `agents` — the generated `AGENTS.eco.md` written as the workspace `AGENTS.md`, plain prompt.
+3. `skill` — the shipped `plugins/eco/skills/eco`, invoked as `$eco <task>`.
+
+Endpoints, fixed before the run:
+
+- **Primary: weighted cost** = uncached input × 1 + cached input × 0.1 + output × 8, per run, compared
+  within the batch by ratio of means with a seeded bootstrap CI and an exact Mann-Whitney U. Chosen
+  because output is under a third of the bill; the weights are list-price ratios and are recorded in
+  every `summary.json` as `costWeights`.
+- **Secondary:** output tokens alone (comparable with the batches above), commands, preamble count, and
+  the SKILL.md-read rate in the skill arm — the last one being a reliability measurement of invocation
+  itself, not of the rules.
+- **Quality gate:** both planted bugs in every run of every arm. A cheaper arm that misses a bug loses.
+- **Decision rule, fixed now:** the surface documented as *primary* in the README is whichever arm is
+  cheaper on weighted cost while passing the gate. If `agents` wins, `AGENTS.md` becomes the headline
+  install path and the skill is documented as the opt-in, per-thread alternative with its round-trip
+  cost stated. If neither beats the baseline, the README says the rules do not pay for themselves on
+  this task at n=5 and ships only the config-lever savings, which are measured offline and need no
+  statistics.
+- One batch cannot settle a direction — Amendment 3's bar stands. Replication across efforts and models
+  follows this batch, on whichever mechanism wins, and the published effect size is a range.
+
+---
+
+## Amendment 4 result — the mechanism, and why one turn is the wrong unit
+
+`mech-terra-default`, `gpt-5.6-terra`, model-default effort, n=5, three arms interleaved in one batch.
+
+| Arm | output | uncached in | cached in | weighted | cmds | preamble | both bugs |
+|---|---:|---:|---:|---:|---:|---|---|
+| `baseline` | 419.6 | 3,137 | 28,160 | 9,310 | 1.0 | 1.00 | 5/5 |
+| `agents` (full 3.6 kB block) | **264.2** | 6,224 | 27,136 | 11,051 | 1.0 | **0.00** | 5/5 |
+| `skill` (`$eco`) | 544.0 | 5,376 | 43,674 | 14,096 | 2.0 | 1.00 | 4/5 |
+
+Read against the pre-registered endpoints:
+
+**The skill surface loses on every axis, and the mechanism explains it.** All 5 runs read `SKILL.md`,
+which is the extra command; that round trip re-sent the prefix and pushed cached input from 28.2k to
+43.7k. Output went *up* 29.6%, because the announcement the model makes when it decides to invoke a
+skill is emitted **before** it reads the body — so the rule forbidding exactly that announcement cannot
+govern the turn it happens in. No wording of the rules can fix this; it is the invocation order. And it
+still cost a bug (NaN 4/5). The skill is therefore demoted from the primary surface.
+
+**The AGENTS.md surface does what the rules intend.** Preamble went to zero in 5/5, output fell 37.0%
+(95% CI −47.7 to −26.8, p = 0.0079), commands stayed at 1.0, and both planted bugs were found in 5/5 —
+the only arm to match the baseline's quality while beating it on output.
+
+**But it did not win the primary endpoint.** Weighted cost came out **+18.7%** (95% CI −10.4 to +52.2,
+p = 0.42): the block added 3,087 uncached input tokens, and 156 saved output tokens × 8 buys back only
+about 1,250. The pre-registered decision rule says the cheaper arm wins, so on this measurement no arm
+beats the baseline, and the honest report is that the rules do not pay for themselves.
+
+Except the measurement has a structural bias I had not accounted for, and it is worth stating plainly
+rather than working around: **a single turn is the worst possible case for an always-on instruction
+block.** On turn 1 the block is uncached, so it is billed at full rate, and there is no later turn for
+its output savings to repeat over. Real use is a thread. A 3-turn baseline run on the same fixture bills
+20,809 uncached and 202,240 cached input against 2,274 output — the block would be cached from turn 2
+onward, at a tenth of the rate, while the output saving recurs every turn.
+
+So the single-turn result stands as measured and is published as measured. It is not the number a user
+experiences.
+
+**Amendment 5 — the thread study, and block size.** Two questions, one batch, pre-registered now:
+
+1. Does the AGENTS.md path beat the baseline over a **realistic thread** rather than one turn?
+2. How large should the block be? The full block is 3.6 kB; a hand-curated 1.1 kB subset
+   (`AGENTS.eco.lean.md`) keeps the lines that carried the measured effect. If cost is what matters,
+   the smaller block should win, and the question is whether it gives up any quality.
+
+Design: study `review-thread` — one thread per run, resumed across three turns: t1 the same review
+prompt every earlier batch used (so the rubric grades the same artifact), t2 `Fix the crash you found.
+Do not change anything else.`, t3 `What else in this module would you harden, and why?`. Turns 2 and 3
+are where the no-recap, no-re-read and no-survey rules can act, and t2 makes the run write to the
+workspace, so the harness now hard-resets the fixture from git before every run — without that, the
+first run to patch the bug would have removed it from every run after it.
+
+Four arms interleaved, `gpt-5.6-terra`, model-default effort, n=5 (60 codex invocations):
+`baseline`, `full` (3.6 kB block), `lean` (1.1 kB block), `skill` (`$eco`, whose one-off body read now
+amortises over three turns and so deserves the fair test).
+
+Endpoints, fixed before the run:
+
+- **Primary:** weighted cost summed over the whole three-turn thread, same weights, same statistics.
+- **Secondary:** output tokens, commands, preamble count, and per-turn breakdown, since the interesting
+  claim is that the block's cost is front-loaded while its saving recurs.
+- **Quality gate:** both planted bugs in turn 1 of every run, and t2 must actually patch the crash.
+- **Decision rule:** the surface documented as primary is the cheapest arm that passes the gate. Between
+  `full` and `lean`, ship whichever is cheaper unless the cheaper one loses a bug, in which case ship
+  the other and say why. If no arm beats the baseline here either, the README claims nothing about the
+  rules and ships only the config-lever savings, which are measured offline and need no statistics.
+- One batch still cannot settle a direction; replication across efforts and models follows on the
+  winning surface, and the published effect is a range.
+
+---
+
+## Amendment 5 result — the thread study
+
+`thread-terra`, `gpt-5.6-terra`, model-default effort, n=5, four arms interleaved, three turns per run
+down one resumed thread. Usage summed over the thread.
+
+| Arm | weighted cost | vs baseline | output | uncached in | cached in | cmds | preamble | both bugs |
+|---|---:|---:|---:|---:|---:|---:|---|---|
+| `baseline` | 49,818 | — | 1,993 | 15,915 | 179,558 | 1.4 | 1.00 | 5/5 |
+| `skill` (`$eco`) | 63,471 | **+27.4%** (CI +19.1…+37.7, p = 0.0079) | 2,462 | 22,588 | 211,866 | 2.0 | 1.00 | 5/5 |
+| `full` (3.6 kB block) | 45,601 | −8.5% (CI −18.8…+3.7, p = 0.22) | 1,328 | 16,183 | 187,955 | 2.0 | 0.00 | 5/5 |
+| `lean` (1.1 kB block) | **41,856** | **−16.0%** (CI −26.1…−5.6, p = 0.032) | 1,248 | 15,000 | 168,704 | 1.4 | 0.00 | 5/5 |
+
+Both pre-registered questions are answered, and the decision rule picks a winner.
+
+**The AGENTS.md path does pay for itself over a thread.** `lean` is 16.0% cheaper than the baseline on
+the primary metric with a confidence interval that excludes zero, cuts output tokens 37.4%, cuts
+reasoning tokens 52%, and uses the same number of shell commands as the baseline (1.4). Every run of
+every arm found both planted bugs, so the gate is satisfied by all four and cheapness decides.
+
+**Smaller is better, and the per-turn split shows exactly why.** Weighted cost per turn:
+
+| Arm | turn 1 | turn 2 | turn 3 |
+|---|---:|---:|---:|
+| `baseline` | 10,697 | 17,582 | 21,536 |
+| `full` | 7,771 (−27%) | 14,951 (−15%) | 22,880 (**+6%**) |
+| `lean` | 8,036 (−25%) | 14,546 (−17%) | 19,272 (−11%) |
+
+The full block wins early and then loses: by turn 3 its uncached input has grown to 8,116 against the
+lean block's 6,076, and that overtakes the output it saves. A block re-sent on every request is a
+recurring cost, so the rules it contains have to earn their bytes. The short block is therefore what
+`./install.sh` writes by default, and `--full` is the opt-in — the reverse of the initial design.
+
+**The skill surface is now measured as worse over a thread too**, and significantly so: +27.4%, CI
+excluding zero. Its one-off body read amortises across three turns, so amortisation was not the problem;
+the extra command and the announcement it makes before reading the body are. This settles the
+demotion — the skill is documented for `setup` and for repositories whose `AGENTS.md` a user does not
+control, with its cost stated.
+
+**A defect in this harness, found while checking the above, and what it invalidates.** Codex publishes
+every skills root it finds — the project's `.agents/skills`, `$HOME/.agents/skills`, and a machine-wide
+one — so a copy of `eco` left in the home root appeared in the catalogue *next to* the staged copy under
+test, under the same name and with an older description. Rendering the batch's prompt with
+`codex debug prompt-input` shows three `eco`-family entries where there should be two. Every batch this
+project ran was sending an ambiguous `$eco`.
+
+Re-scanning all recorded runs for which file was actually read: the staged copy in 66 of 70 reads, the
+stale home copy in 4 (2 in `partA-preamble`, 2 in the `luna` batch). So the contamination changed which
+body was measured only rarely, but it made every skill arm's *catalogue* ambiguous, which is a plausible
+contributor to the read-rate split that Amendment 4 documents. It does not touch `baseline`, `full` or
+`lean`, which invoke nothing; the result above stands. The `skill` arm's numbers are reported as
+measured, with this stated.
+
+The harness now refuses to start a batch whose staged skill name does not resolve to exactly one file
+inside the staged workspace (`bench/lib/preflight.mjs`), using the same free offline renderer. The check
+would have failed every earlier batch. `scripts/prefix-audit.mjs` reports the same problem for users,
+because two copies of one skill mean both descriptions are billed on every turn.
+
+**What is still not established.** One batch, one model, one effort level, one task. Amendment 3's bar
+stands: a direction is claimed only when it repeats across independent batches, and the effect published
+is a range. The replication now running is `lean` against `baseline` on the same three-turn thread at
+**five reasoning-effort levels — low, medium, high, xhigh, max** — n=3 per arm per batch, five
+independent within-batch estimates, with a two-sided sign test on the five signs and the per-effort
+deltas published as a table whatever they say.
+
+---
+
+## Amendment 6 — a second grader widening, and how it was kept honest
+
+The effort sweep's `high` batch flagged a quality failure: the shipped block found the NaN bug in 1 of
+3 runs against the baseline's 3 of 3. Reading the three answers before believing the grader:
+
+- run 1: "…it also calculates average line subtotal, not average per unit; **empty orders also need
+  explicit handling**."
+- run 2: "…likely divides by the wrong denominator … **Empty orders also need explicit handling**."
+- run 3: "It also returns **`NaN`** for an empty list."
+
+All three found it. The criterion required one of `NaN`, "divide(s) by zero", "division by zero",
+`0/0`, `/0`, or `empty (array|list|items)` — and two runs had said **empty *orders***, the same finding
+in the vocabulary of the fixture's own domain. A criterion that accepts one noun and not its synonym
+measures phrasing, not correctness. It now also accepts `orders`, `input`, `cart`, `collection`, "no
+items", and "zero-length".
+
+This is the second widening in this project (the first was `/\bthrows?\b/` missing Codex's "throwing"),
+and widenings are where a benchmark quietly becomes an advertisement. Three things keep it defensible:
+
+1. **It is applied to every arm of every batch at once**, by re-grading the stored event streams:
+   `scripts/regrade.mjs`, which prints a per-arm before/after and refuses to be run on one batch alone.
+2. **The full effect is published.** Five criterion results moved, all of them in treatment arms:
+   `eff-high` lean NaN 1/3→3/3, `mech-terra-default` skill NaN 4/5→5/5, `partA-preamble`
+   p3-first-action crash 4/5→5/5, `partB2-body-length` short NaN 3/5→4/5, `review-…-terra` skill NaN
+   3/5→4/5.
+3. **The reason no baseline moved is a ceiling, not a choice, and that is checked mechanically**: no
+   baseline arm in any recorded batch had ever missed either planted bug, so no widening could have
+   raised one. The check is in the repository and prints the finding.
+   
+CI now runs `scripts/regrade.mjs` on every push and fails if any stored batch would grade differently
+than its committed summary says — so a future rubric edit cannot silently move a published number.
+
+## Amendment 5's replication result — five effort levels
+
+`eff-low` … `eff-max` on `gpt-5.6-terra`: the shipped 1.1 kB block against no rules, three-turn thread,
+n=3 per arm, arms interleaved within each batch, each batch independent.
+
+| effort | baseline cost | eco cost | delta | 95% CI | MWU p | output | both bugs |
+|---|---:|---:|---:|---|---:|---:|---|
+| low | 51,162 | 47,579 | −7.0% | −19.2 … +1.5 | 0.70 | −24.7% | 3/3 |
+| medium | 54,865 | 46,753 | −14.8% | −23.5 … −5.0 | 0.10 | −20.4% | 3/3 |
+| high | 64,160 | 48,079 | −25.1% | −37.9 … −17.4 | 0.10 | −35.3% | 3/3 |
+| xhigh | 90,051 | 73,315 | −18.6% | −47.3 … +29.5 | 1.00 | −18.0% | 3/3 |
+| max | 87,763 | 66,570 | −24.1% | −29.2 … −18.2 | 0.10 | −17.6% | 3/3 |
+
+**5/5 batches in the same direction, two-sided sign test p = 0.0625.** That clears the bar Amendment 3
+fixed in advance ("4/4 is the bar for claiming a direction at all"), and it clears it at every effort
+level Codex offers, `max` included. The quality gate holds everywhere: both planted bugs in every run of
+every batch.
+
+Per the pre-registration, the published effect is the **range, −7.0% to −25.1%**, not any single batch's
+number. No batch went the wrong way, and none is hidden: `bench/results/eff-*/` holds every event stream.
+
+Two observations worth recording because they were not predicted:
+
+- **The saving grows with effort.** `low` is the weakest case and `high`/`max` the strongest. The
+  mechanism is unsurprising once stated: a higher effort produces a longer baseline answer, so there is
+  more to trim. It also means the honest advice for someone running at `low` is that the block is close
+  to break-even there and the config levers are where their saving is.
+- **`xhigh` is noisier than its neighbours** (CI −47 … +30 at n=3) while `max` is tight. Nothing in the
+  data explains that, and with n=3 it does not need explaining beyond variance; it is reported rather
+  than smoothed.

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="396" viewBox="0 0 900 396" role="img" aria-label="Does the short block still pay off at every reasoning effort?">
+<title>Does the short block still pay off at every reasoning effort?</title>
+<rect width="900" height="396" rx="14" fill="#0b111c"/>
+<text x="28" y="34" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#e8ecf3">Does the short block still pay off at every reasoning effort?</text>
+<text x="28" y="58" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#8e99ac">gpt-5.6-terra · the shipped 1.1 kB AGENTS.md block against no rules · each level is its own batch</text>
+<text x="168" y="101" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">low</text>
+<text x="168" y="117" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">n=3 per arm</text>
+<rect x="188" y="89" width="96.1" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="100" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">51.2k → 47.6k cost units</text>
+<text x="546" y="116" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">output −25% · both bugs found every run</text>
+<text x="876" y="106" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−7%</text>
+<text x="168" y="147" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">medium</text>
+<text x="168" y="163" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">n=3 per arm</text>
+<rect x="188" y="135" width="202.9" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="146" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">54.9k → 46.8k cost units</text>
+<text x="546" y="162" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">output −20% · both bugs found every run</text>
+<text x="876" y="152" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−15%</text>
+<text x="168" y="193" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">high</text>
+<text x="168" y="209" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">n=3 per arm</text>
+<rect x="188" y="181" width="344.0" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="192" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">64.2k → 48.1k cost units</text>
+<text x="546" y="208" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">output −35% · both bugs found every run</text>
+<text x="876" y="198" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−25%</text>
+<text x="168" y="239" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">xhigh</text>
+<text x="168" y="255" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">n=3 per arm</text>
+<rect x="188" y="227" width="255.1" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="238" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">90.1k → 73.3k cost units</text>
+<text x="546" y="254" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">output −18% · both bugs found every run</text>
+<text x="876" y="244" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−19%</text>
+<text x="168" y="285" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">max</text>
+<text x="168" y="301" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">n=3 per arm</text>
+<rect x="188" y="273" width="331.4" height="17" rx="5" fill="#34d399"/>
+<text x="546" y="284" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">87.8k → 66.6k cost units</text>
+<text x="546" y="300" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">output −18% · both bugs found every run</text>
+<text x="876" y="290" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−24%</text>
+<text x="28" y="332" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Bars show how big the change is; the number on the right says which way. 5/5 batches agreed, sign test p = 0.063.</text>
+<text x="28" y="350" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Between-batch noise here is larger than the effect, so the range across batches is the claim.</text>
+<text x="28" y="368" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Every batch is published, including any that went the wrong way. bench/results/eff-*/ holds the raw streams.</text>
+</svg>

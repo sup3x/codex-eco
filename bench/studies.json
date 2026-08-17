@@ -14,5 +14,17 @@
     "rubric": "orders-trivial",
     "n": 5,
     "notes": "The question never asks for a review; the crash bug sits in an adjacent function."
+  },
+  "review-thread": {
+    "title": "Realistic thread - review, then fix, then harden (three turns, one thread)",
+    "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+    "turns": [
+      "Fix the crash you found. Do not change anything else.",
+      "What else in this module would you harden, and why?"
+    ],
+    "fixture": "orders",
+    "rubric": "orders-review",
+    "n": 5,
+    "notes": "Every earlier batch measured a single turn, which is the worst case for an always-on instruction block: the block is uncached on turn 1 and there is no later turn for its output savings to repeat over. Real usage is a thread, so this study resumes one thread across three turns and sums the usage. Turn 1 is identical to the `review` study and is what the rubric grades, so the quality column stays comparable; turns 2 and 3 add a patch and an open-ended question, which is where the no-recap, no-re-read and no-survey rules can act."
   }
 }

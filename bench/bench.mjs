@@ -20,13 +20,26 @@
 // preamble messages before the first command are counted as their own metric,
 // and no dollar figure is ever printed - the event stream contains no cost.
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync } from "node:fs";
 import { join, resolve, basename } from "node:path";
+import { pathToFileURL } from "node:url";
 import { REPO_DIR, BENCH_DIR, RAW_DIR, readJson, writeJson, writeTextFile } from "./lib/io.mjs";
 import { compareArms, describe, fmtNum, fmtPct } from "./lib/stats.mjs";
 import { gradeAnswer, summarizeGrades, rubricIds, RUBRICS } from "./lib/grade.mjs";
-import { runArm, validateRun, summarizeRun, codexVersion, stageWorkspace, digestFile, RunError } from "./lib/codex.mjs";
+import {
+  runArm,
+  validateRun,
+  summarizeRun,
+  parseEvents,
+  mergeTurns,
+  codexVersion,
+  stageWorkspace,
+  digestFile,
+  RunError,
+} from "./lib/codex.mjs";
 import { textTable, comparisonLines } from "./lib/report.mjs";
+import { checkSkillResolution } from "./lib/preflight.mjs";
+import { COST_WEIGHTS, weightedCost, uncachedInput } from "./lib/cost.mjs";
 
 const STUDIES_FILE = join(BENCH_DIR, "studies.json");
 const RESULTS_DIR = join(BENCH_DIR, "results");
@@ -51,6 +64,10 @@ Options
                        measures the checked-out body and not ~/.agents/skills
   --variants a=dir,b=dir
                        one treatment arm per skill directory, interleaved in one batch
+  --agents-file <path> add an arm that writes this file as the workspace AGENTS.md and
+                       sends the task with no skill invocation. Codex loads AGENTS.md into
+                       the prompt itself, so this arm carries the rules WITHOUT the shell
+                       round trip a skill body costs - which is the comparison that matters.
   --fixture <name>     fixture directory under bench/fixtures         (default: orders)
   --arms <list>        comma-separated arm names to run             (default: all)
   --n <int>            repetitions per arm                              (default: 1)
@@ -138,6 +155,20 @@ function buildPlan(opts, study) {
       skillDir: existsSync(join(resolve(REPO_DIR, dir), "SKILL.md")) ? resolve(REPO_DIR, dir) : null,
     });
   }
+  // `--agents-file path` gives one arm named "agents"; `--agents-file a=path,b=path`
+  // gives one arm per block, so two block SIZES can be compared inside a single batch
+  // instead of across batches, where the noise is larger than the effect.
+  const agentsSpec = pick("agents-file", null);
+  if (agentsSpec) {
+    for (const part of String(agentsSpec).split(",")) {
+      const hasLabel = part.includes("=");
+      const label = hasLabel ? part.slice(0, part.indexOf("=")) : "agents";
+      const rel = hasLabel ? part.slice(part.indexOf("=") + 1) : part;
+      const p = resolve(REPO_DIR, rel);
+      if (!existsSync(p)) throw new Error(`no such AGENTS.md source: ${p}`);
+      arms.push({ name: slug(label), kind: "agents", skill: null, skillDir: null, agentsFile: p });
+    }
+  }
   arms.unshift({ name: "baseline", kind: "baseline", skill: null, skillDir: null });
 
   const requested = opts.arms ?? cfg.armFilter;
@@ -155,12 +186,19 @@ function buildPlan(opts, study) {
     selected = arms.filter((a) => names.includes(a.name));
   }
 
+  // A study may define `turns` - a list of prompts sent down ONE thread. `task` stays
+  // the first turn so every existing study and every recorded batch keeps its meaning.
+  const extraTurns = cfg.turns ?? null;
+  const turns = [task, ...(Array.isArray(extraTurns) ? extraTurns : [])];
+
   return {
     task,
+    turns,
     fixture,
     fixtureDir,
     rubric: rubric ?? null,
     arms: selected,
+    agentsSpec: agentsSpec ?? null,
     n: intOpt(opts, "n", cfg.n ?? 1),
     model: pick("model", null),
     effort: pick("effort", null),
@@ -173,7 +211,48 @@ function buildPlan(opts, study) {
   };
 }
 
-const promptFor = (plan, arm) => (arm.kind === "skill" ? `$${arm.skill} ${plan.task}` : plan.task);
+const promptFor = (plan, arm, text = plan.task) => (arm.kind === "skill" ? `$${arm.skill} ${text}` : text);
+
+/**
+ * The AGENTS.md arm carries its rules in the workspace, not in the prompt, so the
+ * file has to exist for that arm's runs and be absent for every other arm's. The
+ * arms share one workspace (so they share one git state and one cache prefix),
+ * which means this is set per run, immediately before the run.
+ */
+function applyAgentsFile(workspaceDir, arm) {
+  const target = join(workspaceDir, "AGENTS.md");
+  if (arm.kind === "agents") writeFileSync(target, ecoBlock(readFileSync(arm.agentsFile, "utf8")), "utf8");
+  else rmSync(target, { force: true });
+}
+
+/**
+ * The marker-delimited region is what install.sh writes into a user's AGENTS.md, so
+ * it is what the arm must measure. The surrounding HTML comment explains the file to
+ * a human reader and would otherwise be billed as tokens no user ever pays for.
+ */
+export function ecoBlock(text) {
+  const start = text.indexOf(AGENTS_MARKERS.start);
+  const end = text.indexOf(AGENTS_MARKERS.end);
+  if (start === -1 || end === -1 || end < start) return text;
+  return `${text.slice(start + AGENTS_MARKERS.start.length, end).trim()}\n`;
+}
+
+export const AGENTS_MARKERS = { start: "<!-- codex-eco:start -->", end: "<!-- codex-eco:end -->" };
+
+/**
+ * Put the workspace back to the committed fixture before every run.
+ *
+ * This is not hygiene, it is correctness: the arms share one workspace, and a
+ * multi-turn run whose second turn patches the bug would leave the fixture fixed for
+ * every run after it - so the grader would stop finding the planted bugs and the
+ * later arms would look like quality regressions. Resetting also means a run cannot
+ * inherit files an earlier run created.
+ */
+function resetWorkspace(dir) {
+  const run = (args) => execFileSync("git", args, { cwd: dir, stdio: "ignore" });
+  run(["reset", "--hard", "-q"]);
+  run(["clean", "-fdq"]);
+}
 
 /** Codex wants a trusted directory; a throwaway git repo is the cheapest one. */
 function gitInit(dir) {
@@ -210,6 +289,7 @@ async function commandAb(opts, study) {
     cwd: workspace.dir,
     isGitRepo: isRepo,
     task: plan.task,
+    turns: plan.turns,
     fixture: plan.fixture,
     model: plan.model ?? "(config default)",
     effort: plan.effort ?? "(model default)",
@@ -224,6 +304,8 @@ async function commandAb(opts, study) {
       skill: a.skill,
       skillDir: a.skillDir ? a.skillDir.replace(REPO_DIR, ".") : null,
       skillDigest: a.skillDir ? digestFile(join(a.skillDir, "SKILL.md")) : null,
+      agentsFile: a.agentsFile ? a.agentsFile.replace(REPO_DIR, ".") : null,
+      agentsDigest: a.agentsFile ? digestFile(a.agentsFile) : null,
     })),
   };
 
@@ -233,13 +315,43 @@ async function commandAb(opts, study) {
       `n=${plan.n} per arm | arms ${plan.arms.map((a) => a.name).join("+")}${plan.rubric ? ` | rubric ${plan.rubric}` : ""}`,
   );
   console.log(`  task: ${plan.task.length > 100 ? `${plan.task.slice(0, 97)}...` : plan.task}`);
+  if (plan.turns.length > 1) {
+    console.log(`  ${plan.turns.length} turns per run, sent down one resumed thread:`);
+    plan.turns.forEach((t, i) => console.log(`    t${i + 1}: ${t.length > 86 ? `${t.slice(0, 83)}...` : t}`));
+  }
   for (const a of header.arms.filter((x) => x.skillDigest)) {
     console.log(`  arm ${a.name}: $${a.skill} from ${a.skillDir} (sha256 ${a.skillDigest})`);
   }
   console.log(`  workspace: ${workspace.dir}${isRepo ? " (git)" : " (NOT a git repo - runs will need --skip-git-repo-check)"}`);
 
+  // Free, offline check that the batch will measure what it thinks it will. See
+  // bench/lib/preflight.mjs for the defect that motivated it.
+  const staged = plan.arms.filter((a) => a.kind === "skill" && a.skill).map((a) => a.skill);
+  if (staged.length) {
+    const res = checkSkillResolution({
+      cwd: workspace.dir,
+      codexHome: plan.codexHome ?? undefined,
+      expected: staged,
+    });
+    if (res.skipped) {
+      console.log(`  preflight: skipped (${res.skipped})`);
+    } else if (!res.ok) {
+      workspace.cleanup();
+      throw new Error(`preflight failed, nothing was spent:\n    ${res.problems.join("\n    ")}`);
+    } else {
+      const dupes = (res.duplicates ?? []).filter((d) => !staged.includes(d.name));
+      console.log(
+        `  preflight: ${staged.length} staged skill(s) resolve uniquely inside the workspace` +
+          (dupes.length ? `; unrelated duplicate names in your catalogue: ${dupes.map((d) => d.name).join(", ")}` : ""),
+      );
+    }
+  }
+
   if (opts["dry-run"]) {
-    console.log(`\n--dry-run: ${plan.arms.length * plan.n} runs planned, nothing executed.`);
+    console.log(
+      `\n--dry-run: ${plan.arms.length * plan.n} runs planned, ` +
+        `${plan.arms.length * plan.n * plan.turns.length} codex invocations, nothing executed.`,
+    );
     workspace.cleanup();
     return 0;
   }
@@ -254,26 +366,45 @@ async function commandAb(opts, study) {
     for (const arm of order) {
       const id = `${arm.name}_${String(rep).padStart(2, "0")}`;
       process.stdout.write(`  [${id}] `);
-      let events;
+      let s;
       let exitCode;
       try {
-        ({ events, exitCode } = await runArm({
-          prompt: promptFor(plan, arm),
-          cwd: workspace.dir,
-          codexHome: plan.codexHome ?? undefined,
-          model: plan.model ?? undefined,
-          effort: plan.effort ?? undefined,
-          verbosity: plan.verbosity ?? undefined,
-          skipGitRepoCheck: !isRepo,
-          timeoutMs: plan.timeoutMs,
-        }));
+        if (isRepo) resetWorkspace(workspace.dir);
+        applyAgentsFile(workspace.dir, arm);
+        const turnSummaries = [];
+        let threadId = null;
+        for (const [turnIndex, turnText] of plan.turns.entries()) {
+          const single = plan.turns.length === 1;
+          const prompt = turnIndex === 0 ? promptFor(plan, arm, turnText) : turnText;
+          const res = await runArm({
+            prompt,
+            cwd: workspace.dir,
+            codexHome: plan.codexHome ?? undefined,
+            model: plan.model ?? undefined,
+            effort: plan.effort ?? undefined,
+            verbosity: plan.verbosity ?? undefined,
+            skipGitRepoCheck: !isRepo,
+            timeoutMs: plan.timeoutMs,
+            resumeFrom: turnIndex === 0 ? null : threadId,
+          });
+          exitCode = res.exitCode;
+          const file = single ? `${id}.jsonl` : `${id}_t${turnIndex + 1}.jsonl`;
+          writeTextFile(join(rawOut, file), res.events.map((e) => JSON.stringify(e)).join("\n") + "\n");
+          const turn = summarizeRun(res.events, `${id}#t${turnIndex + 1}`);
+          turnSummaries.push(turn);
+          // A resume needs the id the first turn recorded; without it later turns
+          // would silently start fresh threads and measure the wrong thing.
+          threadId = threadId ?? turn.threadId;
+          if (!threadId && turnIndex === 0 && plan.turns.length > 1) {
+            throw new RunError("turn 1 reported no thread id, so the thread cannot be resumed");
+          }
+        }
+        s = plan.turns.length === 1 ? turnSummaries[0] : mergeTurns(turnSummaries, id);
       } catch (err) {
         console.log(`FAILED: ${err.message}`);
         broken.push({ id, arm: arm.name, rep, problems: [err.message] });
         continue;
       }
-      writeTextFile(join(rawOut, `${id}.jsonl`), events.map((e) => JSON.stringify(e)).join("\n") + "\n");
-      const s = summarizeRun(events, id);
       const problems = validateRun(s, { exitCode });
       if (problems.length) {
         console.log(`REJECTED (${problems.join("; ")})`);
@@ -281,7 +412,11 @@ async function commandAb(opts, study) {
         continue;
       }
       const grade = plan.rubric ? gradeAnswer(plan.rubric, s.result) : null;
-      runs.push({ ...s, arm: arm.name, rep, grade, file: join("raw", `${id}.jsonl`) });
+      const files =
+        plan.turns.length === 1
+          ? [join("raw", `${id}.jsonl`)]
+          : plan.turns.map((_, i) => join("raw", `${id}_t${i + 1}.jsonl`));
+      runs.push({ ...s, arm: arm.name, rep, grade, file: files[0], files });
       const gradeNote = grade ? ` | ${grade.planted}/${grade.plantedTotal} planted${grade.bonus ? ` +${grade.bonus}` : ""}` : "";
       console.log(
         `${s.outputTokens} out (+${s.reasoningTokens} reasoning) | ${s.commandCount} cmd | ` +
@@ -319,43 +454,94 @@ function summarize(header, runs, broken) {
         commandCount: r.commandCount,
         preambleCount: r.preambleCount,
         threadId: r.threadId,
+        turns: r.turns ?? 1,
+        files: r.files ?? [r.file],
+        perTurn: r.perTurn ?? null,
         grade: r.grade,
       })),
       tokens: describe(armRuns.map((r) => r.outputTokens)),
       reasoning: describe(armRuns.map((r) => r.reasoningTokens ?? 0)),
       commands: describe(armRuns.map((r) => r.commandCount)),
       preambles: describe(armRuns.map((r) => r.preambleCount)),
+      uncachedInput: describe(armRuns.map((r) => uncachedInput(r))),
+      cachedInput: describe(armRuns.map((r) => r.cachedInputTokens ?? 0)),
+      weighted: describe(armRuns.map((r) => weightedCost(r))),
+      skillReads: armRuns.filter((r) => (r.commands ?? []).some((c) => /SKILL\.md/i.test(c))).length,
       grades: header.rubric ? summarizeGrades(armRuns.map((r) => r.grade)) : null,
     });
   }
   const baseline = arms.find((a) => a.kind === "baseline");
   const comparisons = {};
+  const weightedComparisons = {};
   if (baseline) {
-    for (const arm of arms.filter((a) => a.kind === "skill")) {
+    for (const arm of arms.filter((a) => a.kind !== "baseline")) {
       comparisons[arm.name] = compareArms(baseline.tokens.values, arm.tokens.values);
+      weightedComparisons[arm.name] = compareArms(baseline.weighted.values, arm.weighted.values);
     }
   }
-  return { ...header, finishedAt: new Date().toISOString(), arms, comparisons, broken };
+  return {
+    ...header,
+    finishedAt: new Date().toISOString(),
+    costWeights: COST_WEIGHTS,
+    arms,
+    comparisons,
+    weightedComparisons,
+    broken,
+  };
 }
 
-const ARM_HEADERS = ["arm", "n", "mean out", "range", "sd", "reasoning", "cmds", "preamble"];
-const ARM_ALIGN = ["", "right", "right", "right", "right", "right", "right", "right"];
+const ARM_HEADERS = ["arm", "n", "mean out", "range", "reasoning", "uncached in", "cached in", "weighted", "cmds", "preamble"];
+const ARM_ALIGN = ["", "right", "right", "right", "right", "right", "right", "right", "right", "right"];
 
-function renderSummary(summary) {
-  const rows = summary.arms.map((a) => [
-    a.name,
-    a.tokens.n,
-    fmtNum(a.tokens.mean, 1),
-    `${fmtNum(a.tokens.min, 0)}-${fmtNum(a.tokens.max, 0)}`,
-    Number.isFinite(a.tokens.stdev) ? fmtNum(a.tokens.stdev, 1) : "n/a",
-    fmtNum(a.reasoning.mean, 1),
-    fmtNum(a.commands.mean, 1),
-    fmtNum(a.preambles.mean, 2),
-  ]);
+export function renderSummary(summary) {
+  // Batches recorded before the cost columns existed have no `uncachedInput`, `cachedInput`
+  // or `weighted` field. They are re-derived here from the per-run usage the harness has
+  // always stored, so an old artifact still renders - and still renders the same numbers a
+  // fresh one would. Older batches with no usage at all simply show n/a.
+  const derive = (a, key, fn) =>
+    a[key] ?? describe((a.runs ?? []).map(fn).filter((x) => Number.isFinite(x)));
+  const rows = summary.arms.map((a) => {
+    const uncached = derive(a, "uncachedInput", (r) => uncachedInput(r));
+    const cached = derive(a, "cachedInput", (r) => r.cachedInputTokens ?? 0);
+    const weighted = derive(a, "weighted", (r) => weightedCost(r));
+    return [
+      a.name,
+      a.tokens.n,
+      fmtNum(a.tokens.mean, 1),
+      `${fmtNum(a.tokens.min, 0)}-${fmtNum(a.tokens.max, 0)}`,
+      fmtNum(a.reasoning.mean, 1),
+      fmtNum(uncached.mean, 0),
+      fmtNum(cached.mean, 0),
+      fmtNum(weighted.mean, 0),
+      fmtNum(a.commands.mean, 1),
+      fmtNum(a.preambles.mean, 2),
+    ];
+  });
   const lines = [textTable(ARM_HEADERS, rows, { align: ARM_ALIGN })];
+  const w = summary.costWeights ?? COST_WEIGHTS;
+  lines.push("");
+  lines.push(
+    `weighted = uncached input x${w.uncachedInput} + cached input x${w.cachedInput} + output x${w.output} ` +
+      `(GPT-5-class price ratios). It is the primary metric: output alone is under a third of the bill.`,
+  );
+  for (const [name, cmp] of Object.entries(summary.weightedComparisons ?? {})) {
+    lines.push("");
+    lines.push(`WEIGHTED COST (primary) - ${name} vs baseline`);
+    lines.push(...comparisonLines(cmp, { baselineName: "baseline", treatmentName: name, metric: "weighted cost" }));
+  }
   for (const [name, cmp] of Object.entries(summary.comparisons ?? {})) {
     lines.push("");
-    lines.push(...comparisonLines(cmp, { baselineName: "baseline", treatmentName: name }));
+    lines.push(`OUTPUT TOKENS ONLY (secondary) - ${name} vs baseline`);
+    lines.push(...comparisonLines(cmp, { baselineName: "baseline", treatmentName: name, metric: "output tokens" }));
+  }
+  const reads = summary.arms.filter((a) => a.kind === "skill" && a.skillReads !== undefined);
+  if (reads.length) {
+    lines.push("");
+    lines.push(
+      "SKILL.md reads (Codex injects only the name and description, so a skill arm must read its own " +
+        "body from disk - one extra round trip, and the rules are absent from any run that skipped it):",
+    );
+    for (const a of reads) lines.push(`  ${a.name}: ${a.skillReads}/${a.tokens.n} runs read SKILL.md`);
   }
   const graded = summary.arms.filter((a) => a.grades);
   if (graded.length) {
@@ -447,43 +633,118 @@ function readJsonl(file) {
     .map((l) => JSON.parse(l));
 }
 
+/**
+ * All event streams belonging to one run. `<id>.jsonl` for a single-turn run;
+ * `<id>_t1.jsonl`, `<id>_t2.jsonl`, ... for a thread.
+ */
+function discoverTurnFiles(outDir, firstFile) {
+  const rel = String(firstFile);
+  const dir = join(outDir, "raw");
+  const base = basename(rel).replace(/\.jsonl$/, "").replace(/_t\d+$/, "");
+  if (!existsSync(dir)) return [rel];
+  // Prefix match rather than a built regex: the id contains dots and dashes, and building
+  // a pattern out of it is how this line got broken once already.
+  const turn = (f) => Number(f.slice(base.length + 2, -6));
+  const found = readdirSync(dir)
+    .filter((f) => f.startsWith(`${base}_t`) && f.endsWith(".jsonl") && Number.isInteger(turn(f)))
+    .sort((a, b) => turn(a) - turn(b));
+  return found.length ? found.map((f) => join("raw", f)) : [rel];
+}
+
 function commandPublish(opts) {
   const tag = opts._[1];
   if (!tag) throw new Error("usage: bench.mjs publish <tag> --study <study-id>");
   const studyId = opts.study;
   if (!studyId) throw new Error("--study <id> is required so every published run carries its study label");
   const outDir = join(RESULTS_DIR, tag);
-  const summary = readJson(join(outDir, "summary.json"));
+  const summaryFile = join(outDir, "summary.json");
   const manifest = existsSync(MANIFEST_FILE) ? readJson(MANIFEST_FILE) : { runs: {} };
   const prefix = opts.prefix ?? slug(studyId);
+
+  // A batch that was stopped part-way has raw streams and no summary. Those runs are
+  // still evidence, and dropping them because they are inconvenient to publish is
+  // selective reporting, so they go out with what provenance exists and an `aborted` flag.
+  if (!existsSync(summaryFile)) {
+    const rawDir = join(outDir, "raw");
+    if (!existsSync(rawDir)) throw new Error(`${outDir} has neither summary.json nor raw/`);
+    let n = 0;
+    mkdirSync(RAW_DIR, { recursive: true });
+    for (const f of readdirSync(rawDir).filter((x) => x.endsWith(".jsonl"))) {
+      const id = `${prefix}_${f.replace(/\.jsonl$/, "")}`;
+      const target = join(RAW_DIR, `${id}.jsonl`);
+      if (existsSync(target) && !opts.force) throw new Error(`${target} exists - pass --force to overwrite`);
+      const text = readTextSafe(join(rawDir, f));
+      writeFileSync(target, text, "utf8");
+      const s = summarizeRun(parseEvents(text), id);
+      manifest.runs[id] = {
+        study: studyId,
+        aborted: true,
+        note: "batch stopped before it produced a summary; published so the runs are not hidden",
+        arm: f.replace(/_\d+(_t\d+)?\.jsonl$/, ""),
+        files: [basename(target)],
+        outputTokens: s.outputTokens,
+        reasoningTokens: s.reasoningTokens,
+        inputTokens: s.inputTokens,
+        cachedInputTokens: s.cachedInputTokens,
+        preambleCount: s.preambleCount,
+        commandCount: s.commandCount,
+      };
+      n++;
+    }
+    writeJson(MANIFEST_FILE, manifest);
+    console.log(`published ${n} runs from an unsummarised batch into ${RAW_DIR}`);
+    return 0;
+  }
+
+  const summary = readJson(summaryFile);
   let copied = 0;
   mkdirSync(RAW_DIR, { recursive: true });
   for (const arm of summary.arms) {
     for (const run of arm.runs) {
       const id = `${prefix}_${arm.name}_${String(run.rep).padStart(2, "0")}`;
-      const target = join(RAW_DIR, `${id}.jsonl`);
-      if (existsSync(target) && !opts.force) throw new Error(`${target} exists - pass --force to overwrite`);
-      writeFileSync(target, readTextSafe(join(outDir, run.file)), "utf8");
+      // A multi-turn run is several event streams. Every one is published: the summed
+      // usage is what the claim rests on, so a reader has to be able to re-add it.
+      // Summaries written before `files` existed list only turn 1. Recover the rest from
+      // disk rather than publishing a third of a multi-turn run and calling it published.
+      const files = run.files ?? discoverTurnFiles(outDir, run.file);
+      const published = [];
+      files.forEach((rel, i) => {
+        const suffix = files.length === 1 ? "" : `_t${i + 1}`;
+        const target = join(RAW_DIR, `${id}${suffix}.jsonl`);
+        if (existsSync(target) && !opts.force) throw new Error(`${target} exists - pass --force to overwrite`);
+        writeFileSync(target, readTextSafe(join(outDir, rel)), "utf8");
+        published.push(basename(target));
+        copied++;
+      });
       manifest.runs[id] = {
         study: studyId,
         arm: arm.name,
+        armKind: arm.kind,
         rep: run.rep,
         task: summary.task,
+        turns: summary.turns ?? [summary.task],
+        files: published,
         fixture: summary.fixture,
         skill: arm.skill,
         skillDigest: arm.skillDigest,
+        agentsFile: arm.agentsFile ?? null,
+        agentsDigest: arm.agentsDigest ?? null,
         model: summary.model,
         effort: summary.effort,
         verbosity: summary.verbosity,
         codexVersion: summary.codexVersion,
         rubric: summary.rubric,
+        costWeights: summary.costWeights ?? null,
         date: summary.startedAt.slice(0, 10),
         outputTokens: run.outputTokens,
         reasoningTokens: run.reasoningTokens,
+        inputTokens: run.inputTokens,
+        cachedInputTokens: run.cachedInputTokens,
         preambleCount: run.preambleCount,
         commandCount: run.commandCount,
+        perTurn: run.perTurn ?? null,
+        grade: run.grade ?? null,
       };
-      copied++;
     }
   }
   writeJson(MANIFEST_FILE, manifest);
@@ -520,10 +781,19 @@ async function main() {
   }
 }
 
-main()
-  .then((code) => process.exit(code ?? 0))
-  .catch((err) => {
-    console.error(`\nerror: ${err.message}`);
-    if (process.env.ECO_DEBUG) console.error(err.stack);
-    process.exit(2);
-  });
+// Guarded so this module can be imported for its renderers - scripts/regrade.mjs needs
+// renderSummary to keep summary.md in step with summary.json.
+//
+// Without the guard the CLI ran on import: main() parsed the IMPORTER's argv, found no
+// command, threw, and its .catch called process.exit(2). It only ever appeared to work
+// because the importing script's own synchronous main() reached process.exit(0) first.
+// A race that a library wins by luck is a bug that will lose it later.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then((code) => process.exit(code ?? 0))
+    .catch((err) => {
+      console.error(`\nerror: ${err.message}`);
+      if (process.env.ECO_DEBUG) console.error(err.stack);
+      process.exit(2);
+    });
+}

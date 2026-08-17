@@ -199,6 +199,77 @@ function checkMarketplace(root) {
   }
 }
 
+// The rules blocks the installers write into a user's AGENTS.md.
+const BLOCK_START = "<!-- codex-eco:start -->";
+const BLOCK_END = "<!-- codex-eco:end -->";
+// AGENTS.md is re-sent on every request, so the block's size is a per-turn cost.
+// The short block exists specifically to keep that cost down; if it grows back to the
+// size of the full one, the file has lost its reason to exist. Measured on
+// gpt-5.6-terra, the full block cut output 37% but doubled uncached input.
+const LEAN_MAX_BYTES = 1600;
+
+function extractBlock(text) {
+  const start = text.indexOf(BLOCK_START);
+  const end = text.indexOf(BLOCK_END);
+  if (start === -1 || end === -1 || end < start) return null;
+  return text.slice(start, end + BLOCK_END.length);
+}
+
+function checkRuleBlocks(root) {
+  for (const [file, budget] of [
+    ["AGENTS.eco.md", null],
+    ["AGENTS.eco.lean.md", LEAN_MAX_BYTES],
+  ]) {
+    const path = join(root, file);
+    if (!existsSync(path)) {
+      fail(file, "missing - the installers read the rules block from it");
+      continue;
+    }
+    const text = readFileSync(path, "utf8");
+    const block = extractBlock(text);
+    if (!block) {
+      fail(file, `no ${BLOCK_START} ... ${BLOCK_END} region, so the installers cannot extract anything`);
+      continue;
+    }
+    const bytes = Buffer.byteLength(block, "utf8");
+    if (budget && bytes > budget) {
+      fail(file, `rule block is ${bytes} bytes, over the ${budget}-byte budget that is the point of the short block`);
+    }
+    // The block is what reaches the model; a stray marker inside it would break the
+    // installers' idempotent replace.
+    const inner = block.slice(BLOCK_START.length, -BLOCK_END.length);
+    if (inner.includes(BLOCK_START) || inner.includes(BLOCK_END)) {
+      fail(file, "a nested codex-eco marker inside the block would break idempotent re-install");
+    }
+    notes.push(`${file}: rule block is ${bytes} bytes${budget ? ` (budget ${budget})` : ""}`);
+  }
+
+  // Both installers must agree on what the block is, so both must name the same files.
+  for (const [installer, needles] of [
+    ["install.sh", ["AGENTS.eco.lean.md", "AGENTS.eco.md", BLOCK_START]],
+    ["install.ps1", ["AGENTS.eco.lean.md", "AGENTS.eco.md", BLOCK_START]],
+  ]) {
+    const path = join(root, installer);
+    if (!existsSync(path)) {
+      fail(installer, "missing");
+      continue;
+    }
+    const text = readFileSync(path, "utf8");
+    for (const needle of needles) {
+      if (!text.includes(needle)) fail(installer, `does not reference \`${needle}\``);
+    }
+  }
+
+  // install.ps1 has no BOM, so PowerShell 5.1 decodes it as ANSI; one non-ASCII byte
+  // there once stopped the whole script parsing.
+  const ps1 = join(root, "install.ps1");
+  if (existsSync(ps1)) {
+    const buf = readFileSync(ps1);
+    const bad = [...buf].findIndex((b) => b > 0x7e || (b < 0x09 && b !== 0x0a && b !== 0x0d));
+    if (bad !== -1) fail("install.ps1", `byte ${bad} is 0x${buf[bad].toString(16)}, outside ASCII`);
+  }
+}
+
 /** The plugin's own version must match package.json, or an update never reaches users. */
 function checkVersionSync(root) {
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
@@ -224,6 +295,7 @@ function main() {
   }
   checkPlugin(pluginRoot);
   checkMarketplace(REPO);
+  checkRuleBlocks(REPO);
   checkVersionSync(REPO);
 
   for (const n of notes) console.log(`note  ${n}`);

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="368" viewBox="0 0 900 368" role="img" aria-label="Same rules, three ways to deliver them — cost of one three-turn thread">
+<title>Same rules, three ways to deliver them — cost of one three-turn thread</title>
+<rect width="900" height="368" rx="14" fill="#0b111c"/>
+<text x="28" y="34" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#e8ecf3">Same rules, three ways to deliver them — cost of one three-turn thread</text>
+<text x="28" y="58" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#8e99ac">gpt-5.6-terra · (model default) effort · n=5 per arm, interleaved in one batch · review, then patch, then an open question</text>
+<text x="168" y="101" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">no rules</text>
+<text x="168" y="117" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">plain Codex</text>
+<rect x="188" y="89" width="248.0" height="17" rx="5" fill="#3f4a5f"/>
+<text x="518" y="100" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">49.8k cost units</text>
+<text x="518" y="116" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1993 out · 1.4 cmd · 1.0 pre · 5/5 bugs</text>
+<text x="168" y="147" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">$eco skill</text>
+<text x="168" y="163" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">read from disk on use</text>
+<rect x="188" y="135" width="316.0" height="17" rx="5" fill="#f87171"/>
+<text x="518" y="146" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">63.5k cost units</text>
+<text x="518" y="162" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">2462 out · 2.0 cmd · 1.0 pre · 5/5 bugs</text>
+<text x="876" y="152" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#f87171">+27%</text>
+<text x="168" y="193" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">AGENTS.md full</text>
+<text x="168" y="209" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">3.6 kB block</text>
+<rect x="188" y="181" width="227.0" height="17" rx="5" fill="#34d399"/>
+<text x="518" y="192" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">45.6k cost units</text>
+<text x="518" y="208" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1328 out · 2.0 cmd · 0.0 pre · 5/5 bugs</text>
+<text x="876" y="198" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−8%</text>
+<text x="168" y="239" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#e8ecf3">AGENTS.md short</text>
+<text x="168" y="255" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1.1 kB block — shipped</text>
+<rect x="188" y="227" width="208.4" height="17" rx="5" fill="#34d399"/>
+<text x="518" y="238" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12.5" fill="#e8ecf3">41.9k cost units</text>
+<text x="518" y="254" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="11" fill="#8e99ac">1248 out · 1.4 cmd · 0.0 pre · 5/5 bugs</text>
+<text x="876" y="244" text-anchor="end" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="18" font-weight="700" fill="#34d399">−16%</text>
+<text x="28" y="286" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Cost units = uncached input x1 + cached input x0.1 + output x8, the GPT-5-class price ratios.</text>
+<text x="28" y="304" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Output alone is under a third of a Codex turn's bill, which is why it is not the headline metric.</text>
+<text x="28" y="322" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">Every arm found both planted bugs in every run, so cheapness decides. 95% CI −26% .. −6%, p = 0.032</text>
+<text x="28" y="340" font-family="Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif" font-size="12" fill="#8e99ac">A skill's body is read with a shell command; AGENTS.md arrives with the prompt. That is the difference.</text>
+</svg>

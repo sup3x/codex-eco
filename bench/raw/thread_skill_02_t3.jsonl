@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a00ffd-2655-7542-a757-b68321e1fee2"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"- Validate `items` and each `{ price, qty }`: avoid cryptic runtime errors and reject negative/non-finite values.\n- Guard `averageItemPrice([])`: define `0`, `null`, or an error instead of returning `NaN`.\n- Clarify/fix average semantics: divide by total quantity for a per-unit average; current logic averages order-line totals.\n- Round/handle currency in minor units (cents): JavaScript floating-point math can produce inaccurate money totals.\n- Validate `order.items` and discount codes in `formatOrder`: protect receipt generation from malformed input."}}
+{"type":"turn.completed","usage":{"input_tokens":101342,"cached_input_tokens":92672,"cache_write_input_tokens":0,"output_tokens":999,"reasoning_output_tokens":332}}

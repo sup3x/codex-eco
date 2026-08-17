@@ -1,6 +1,6 @@
 # codex-eco — Codex için eco modu
 
-**Codex oturumun sen tek harf yazmadan önce zaten ~5.500 token'a mal oluyor. `codex-eco` bunu ölçer, gerçekten işe yarayan ayarlarla üçte birini keser ve etkisi canlı modelde ölçülmüş davranış kuralları getirir — kuralların işleri kötüleştirdiği modeller dahil.**
+**Codex oturumun sen tek harf yazmadan önce zaten ~5.000 token'a mal oluyor. `codex-eco` bunu bedava ve çevrimdışı bir denetimle ölçer, kendi Codex sürümünde doğrulanmış ayarlarla üçte birini keser, ve davranış kurallarını taşıması hiçbir şeye mal olmayan tek kanaldan kurar — bariz görünen kanalın yanlış olduğunu söyleyen ölçümler dahil.**
 
 **Codex CLI** ve **ChatGPT masaüstü uygulamasındaki Codex** için çalışır. Tek kurulum ikisini de kapsar.
 
@@ -16,22 +16,84 @@
 git clone https://github.com/sup3x/codex-eco && cd codex-eco && ./install.sh
 ```
 
-Sonra yeni bir Codex oturumunda:
+Windows: `.\install.ps1`.
+
+Kurulum bu kadar. **Çağıracağın bir şey yok** — kurallar `$CODEX_HOME/AGENTS.md` dosyasına yazılır, Codex de onu her turda, her reasoning effort seviyesinde, her modelde, hem CLI'da hem masaüstü uygulamasında prompt'un içine yükler. Yeni bir oturum aç, açıktır.
+
+```
+$ ./install.sh
+codex-eco
+  rules:      /home/sen/.codex/AGENTS.md (global, short block)
+  skills dir: /home/sen/.agents/skills (default)
+  rules: block appended to /home/sen/.codex/AGENTS.md (short; previous file at .../.eco-backups/AGENTS.md-20260817-135234)
+  eco: installed and verified (3 files)
+  eco-max: installed and verified (2 files)
+```
+
+Blok `<!-- codex-eco:start -->` / `<!-- codex-eco:end -->` ile sınırlı: tekrar çalıştırınca ikinci bir kopya eklemek yerine yerinde değiştirir, `--uninstall` tam olarak o bloğu siler ve dosyanın kalanına dokunmaz, değişecek her dosya önce `.eco-backups/` altına kopyalanır. İki kurucu bayt bayt aynı dosyayı üretir.
+
+| | Ne yapar | Ne zaman |
+|---|---|---|
+| `./install.sh` | kuralları global olarak + iki skill | varsayılan |
+| `./install.sh --project` | kuralları bu deponun `AGENTS.md`'sine | proje bazında istiyorsan, ya da paylaştığın bir depoda |
+| `./install.sh --full` | 1.1 kB yerine tam 3.6 kB'lık kural bloğu | en ucuz blok yerine her kuralı istiyorsan |
+| `./install.sh --rules-only` / `--skills-only` | yalnız bir yarısı | sadece birini istiyorsan |
+| `./install.sh --uninstall` | bloğu ve skill'leri kaldırır | |
+
+Skill'ler, kurallar dosyasının yapamadığı iki iş için duruyor:
 
 | | Codex CLI | ChatGPT masaüstündeki Codex |
 |---|---|---|
-| Aç | `$eco` | `@eco` |
-| Görevle birlikte | `$eco orders.js'deki başarısız testi düzelt` | `@eco orders.js'deki başarısız testi düzelt` |
 | Kurulumunu ayarla | `$eco setup` | `@eco setup` |
+| Modu tek bir konuşmada aç | `$eco <görev>` | `@eco <görev>` |
 
-Tek başına `$eco` tam olarak `Eco mode active.` cevabını verir — bu satırı görüyorsan yüklenmiştir.
+Bir skill çağırmak fazladan bir shell turuna mal olur; buna güvenmeden önce nedenini bilmek işine yarar — [kuralların neden skill'de olmadığı](#kurallar-neden-agentsmdde-skillde-değil).
 
-Windows: `.\install.ps1`. İki kurucu da değiştirdiği her şeyi yedekler ve `--uninstall` / `-Uninstall` destekler.
+## Kurallar neden AGENTS.md'de, skill'de değil
+
+Bu projenin ana bulgusu bu, ve öğrenmesi bir geri çekmeye mal oldu.
+
+![Aynı kuralları taşımanın üç yolu, üç turluk bir konuşmanın maliyeti](assets/surfaces.tr.svg)
+Codex bir skill'i modele **tek bir katalog satırı** olarak yayınlar — ad, açıklama ve bir yol:
+
+```
+- eco: Token-frugal mode for Codex - fewer tokens per turn ... (file: ~/.agents/skills/eco/SKILL.md)
+```
+
+Gövde prompt'ta değildir. Bunu tek token harcamadan kendin görebilirsin, çünkü `codex debug prompt-input` modelin göreceği listeyi çevrimdışı üretir:
+
+```bash
+codex debug prompt-input '$eco src/app.ts dosyasını incele' > ile.json
+codex debug prompt-input 'src/app.ts dosyasını incele'      > olmadan.json
+diff ile.json olmadan.json      # aradaki fark beş bayt: düz metin "$eco "
+```
+
+Bundan üç sonuç çıkar ve üçü de ölçülebilir:
+
+1. **Kurallar ancak ajan dosyayı okuduktan sonra geçerli olur.** O okuma bir shell komutudur — tam bir fazladan tur, ve her tur bütün ön eki yeniden gönderir. `gpt-5.6-terra` üzerinde ölçüldü: `$eco` çağırmak tek turluk bir işte önbellekli girdiyi 28,2k'dan 43,7k token'a çıkardı.
+2. **En büyük etkisi ölçülen kural bir skill üzerinden hiç çalışamaz.** "İlk çıktın bir araç çağrısıdır, duyuru değil" kuralı, gövde okunmadan **önce** ihlal edilir: model bir skill'i çağırmaya karar verdiği anda elinde yalnızca açıklama vardır. 5/5 koşuda modu duyurdu, sonra bunu yasaklayan kuralı okudu. Bunu hiçbir ifade düzeltmez; sorun çağırma sırasıdır.
+3. **Gövdenin okunup okunmayacağı bir model kararıdır, garanti değil.** Bu projenin kaydettiği bütün koşular `SKILL.md`'ye dokunan bir komut için yeniden taranınca bazı partilerde 10/10, **bazılarında 1/20** okuma çıktı. Yani iki çalışma bir temeli kendisiyle karşılaştırmış; sonuçları sessizce silinmek yerine `bench/preregistration/001-first-study.md` içinde geri çekildi.
+
+`AGENTS.md`'de bu sorunların hiçbiri yok. Codex onu `<INSTRUCTIONS>` içinde aynen enjekte eder; ne fazladan tur, ne verilecek bir karar — aynı bedava çevrimdışı yolla, dosyaya bir işaret metni koyup üretilen prompt'ta bularak doğrulandı. Kurucunun ilk işi bu yüzden bloğu yazmak, skill de bu yüzden ikincil yol olarak belgeleniyor.
+
+**Skill hâlâ ne için var.** `$eco setup` — yapılandırmanı okuyup kaldıraçları önermek, onay almadan hiçbir şey uygulamamak — fazladan bir turun önemsiz olduğu tek seferlik bir iş. Ve konuşmanın ortasında `$eco` çağırmak, `AGENTS.md`'sini senin kontrol etmediğin bir depoda disiplini açmanın tek yolu.
+
+## İki maliyet, ve yalnız birinin istatistiğe ihtiyacı var
+
+Bu ikisini ayrı tutmak, dürüst bir iddia ile pazarlama sayısı arasındaki farktır:
+
+| | Nasıl ölçülüyor | Ne kadar kararlı |
+|---|---|---|
+| **Sabit ön ek** — skill kataloğu, plugin reklamı, sen yazmadan gönderilen talimat metni | `codex debug prompt-input`, çevrimdışı, model çağrısı yok | Kesin. İki kez çalıştır, aynı baytları al. Tam karakter sayısı olarak veriliyor. |
+| **Kuralların davranışa etkisi** | Canlı model, kol başına n=5, kollar tek parti içinde dönüşümlü, deterministik notlama | Gürültülü. Bu işte tek parti bir yönü belirlemez; ölçüt yönün bağımsız partilerde tekrar etmesi, yayınlanan etki de bir aralık. |
+
+Denetim, kendi makinende bir saniyede doğrulayabildiğin kısım. Davranış sayıları ise bu deponun uzun uzun, açıkça — aleyhimize çıktığı yerler dahil — tartıştığı kısım.
 
 ## Token'ının nereye gittiğini gör — hiç harcamadan
 
 Bu depodaki en faydalı şey çalıştırmak bedava ve hiçbir model çağrısı yapmıyor:
 
+![Bir karakter yazmadan önce Codex oturumunun maliyeti](assets/prefix.tr.svg)
 ```bash
 node scripts/prefix-audit.mjs
 ```
@@ -57,28 +119,53 @@ Bunlar tek bir makineden gelen gerçek sayılar; `codex debug prompt-input` üre
 
 ## Ne alıyorsun
 
-| Bileşen | Ne yapar |
+| Parça | Ne yapar |
 |---|---|
-| **`eco` skill** | Pazarlığa kapalı bir doğruluk tabanıyla davranış kuralları. Bir kez çağırmak thread boyunca geçerli. `eco setup` config değişikliklerini önerir, onay almadan hiçbir şey uygulamaz. |
-| **`eco-max` skill** | Aynı kurallar, en sıkı cevap bütçesiyle; rutin işler için. `eco`'dan üretilir, bu yüzden ikisi birbirinden ayrışamaz. |
-| **`profiles/eco.config.toml`** | Güvenli ön-ek kademesi: doğrulanmış dört ayar artı iki sınır. `codex --profile eco`. |
-| **`profiles/eco-max.config.toml`** | Akıl yürütme eforuna taban ekler ve agresif ön-ek kademesini açar. |
-| **`AGENTS.eco.md`** | Aynı disiplin, depo seviyesinde bir blok olarak — skill çağırmadan sürekli açık kalsın istersen. |
-| **`scripts/prefix-audit.mjs`** | Yukarıdaki ücretsiz, çevrimdışı denetim. |
-| **`bench/`** | Buradaki her sayının arkasındaki ölçüm harness'ı, deterministik grader, köken manifesti ve ön-kayıtlar. |
+| **`AGENTS.eco.lean.md`** | Kurucunun varsayılan olarak yazdığı kural bloğu: 1.1 kB, ölçülen etkiyi taşıyan satırlara elle indirilmiş. `AGENTS.md` her istekte yeniden gönderildiği için bu dosyanın boyutu tur başına bir maliyet — 1.600 baytı geçerse CI hata veriyor. |
+| **`AGENTS.eco.md`** | Tam kural bloğu, 3.6 kB, `eco` skill gövdesinden üretiliyor; ikisi birbirinden ayrışamıyor. `./install.sh --full` bunu kurar. |
+| **`eco` skill'i** | `$eco setup` yapılandırmanı okur, kaldıraçları önerir, onay almadan hiçbir şey uygulamaz. `$eco <görev>` disiplini tek bir konuşmada açar — bir tur bedeliyle. |
+| **`eco-max` skill'i** | Aynı kurallar, en sıkı cevap bütçesiyle; rutin işler için. `eco`'dan üretiliyor. |
+| **`profiles/eco.config.toml`** | Güvenli ön ek katmanı: doğrulanmış dört ayar ve iki sınır. `codex --profile eco`. |
+| **`profiles/eco-max.config.toml`** | Reasoning effort tabanı ve agresif ön ek katmanını ekler. |
+| **`scripts/prefix-audit.mjs`** | Aşağıdaki bedava, çevrimdışı denetim. Önerdiği her anahtarı, önermeden önce kendi Codex sürümünde doğrular. |
+| **`scripts/cost-report.mjs`** | Kayıtlı herhangi bir partiyi, yalnız çıktı token'ı değil, bir turun gerçekte ne faturalandırdığı üzerinden yeniden puanlar. |
+| **`bench/`** | Koşucu, deterministik notlayıcı, köken dosyası ve ön kayıtlar — geri çekmeler dahil. |
 
 ## Ölçülen sonuçlar
 
 <!-- codex-eco:results:start -->
-_Henüz yayınlanmış bir ana çalışma yok. Çalıştırmalar yayınlandığında `node scripts/build-assets.mjs` bu bölümü `bench/manifest.json`'dan doldurur._
+### 1. Sabit ön ek — kesin, istatistik yok
+
+codex-cli 0.147.0 ile, katalogda 21 skill varken, sen yazmadan önce gönderilen talimat ön eki **20.122 karakter** (~5.031 token). Güvenli profil bunu **13.166** karaktere (**-34.6%**), agresif profil **8.250** karaktere (**-59.0%**) indiriyor. Kendi makinende bir komutla doğrula: `node scripts/prefix-audit.mjs`.
+
+### 2. Kuralları taşımanın üç yolu
+
+`gpt-5.6-terra`, model varsayılanı effort, kol başına n=5, kollar tek parti içinde dönüşümlü. Her koşu üç turluk tek bir konuşma: incele, düzelt, açık uçlu soru. Kullanım tüm konuşma boyunca toplandı.
+
+| Kol | maliyet | temele karşı | çıktı | komut | önsöz | iki hata da |
+|---|---:|---:|---:|---:|---:|---|
+| `kural yok` | 49.818 | — | 1.993 | 1.4 | 1.00 | 5/5 |
+| `$eco skill` | 63.471 | **+27.4%** (%95 GA 19.1% .. 37.7%, p = 0.008) | 2.462 | 2.0 | 1.00 | 5/5 |
+| `AGENTS.md tam` | 45.601 | **−8.5%** (%95 GA −18.8% .. 3.7%, p = 0.222) | 1.328 | 2.0 | 0.00 | 5/5 |
+| `AGENTS.md kısa` | 41.856 | **−16.0%** (%95 GA −26.1% .. −5.6%, p = 0.032) | 1.248 | 1.4 | 0.00 | 5/5 |
+
+Her kol, her koşuda iki ekili hatayı da buldu; karar bu yüzden ucuzluğa kalıyor. Kısa blok kazanıyor, `$eco` skill'i ise anlamlı biçimde kaybediyor — nedeni [yukarıda](#kurallar-neden-agentsmdde-skillde-değil).
+
+### 3. Her reasoning effort seviyesinde tekrar
+
+![Effort seviyelerine göre tekrar](assets/efforts.tr.svg)
+
+Dağıtılan blok, `gpt-5.6-terra` üzerinde 5 bağımsız partide sınandı (kol başına n=3); **5/5 parti aynı yöne** gitti, iki yönlü işaret testi p = 0.063. Etki **-7.0% ile -25.1%** arasında değişti ve iki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.
+
+Eğilim açık ve mekanizması makul: effort yükseldikçe temel çıktı da uzuyor, yani kesilecek yağ artıyor.
 <!-- codex-eco:results:end -->
 
 ## Kurallar tam olarak neyi hedefliyor
 
 Her kural, silahsız ajanın gerçek bir transkriptte o şeyi yaptığı **görüldüğü** için var:
 
-1. **Preamble turu.** Codex, ne yapacağını duyuran bir mesajla başlıyor — *"I'll inspect the test file and its nearby project context, then summarize"* — ve komutu ancak ondan sonra çalıştırıyor. Bu, hiçbir işi ilerletmeyen faturalı bir tur. Onu bastıran kural, dört aday ifadeyi birbirine karşı ölçerek seçildi ([Part A](bench/preregistration/001-first-study.md)).
-2. **İstenmeyen keşif.** Tek bir dosyayı incelemesi istenen silahsız ajan, ayrıca `Get-ChildItem -Force` ve ağaç geneli `rg -n "orders" .` çalıştırdı — kimsenin istemediği bir dizin dökümü ve tam ağaç grep'i. Silahlı kollar 1.4 yerine 1 komut kullandı.
+1. **Önsöz turu.** Codex, ne yapacağını duyuran bir mesajla başlıyor — *"I'll inspect the test file and its nearby project context, then summarize"* — ve komutu ancak ondan sonra çalıştırıyor. Bu, hiçbir işi ilerletmeyen faturalı bir çıktı ve bu depodaki en güvenilir etki: **blok olmadan koşu başına 1.00 önsöz, blokla 0.00 — ölçülen her partide**. Bu kuralın en iyi ifadesini dört varyantı A/B test ederek seçme girişimi [geri çekildi](bench/preregistration/001-first-study.md) — 20 koşusunun 19'unda kurallar hiç yüklenmemişti — yani dağıtılan ifade, bir karşılaştırmayı kazanan değil, çalıştığı ölçülen ifade.
+2. **İstenmeyen keşif.** Tek bir dosyayı incelemesi istenen silahsız ajan, ayrıca `Get-ChildItem -Force` ve ağaç geneli `rg -n "orders" .` çalıştırdı — kimsenin istemediği bir dizin dökümü ve tam ağaç grep'i. Üç turluk konuşmada blok, komut sayısını temelin 1.4 seviyesinde tutarken çıktıyı %37 kesiyor; yani bir maliyeti başkasıyla değişmiyor, israfı kaldırıyor.
 3. **Bütün dosyayı dökme.** Codex'te editör aracı yok; her şey bir shell komutu. Bu yüzden kurallar komut hijyeni üzerine: bölgeyi iste (`sed -n`, `Get-Content -TotalCount`), `rg -n`'den önce `rg -l`, bağımsız komutları tek çağrıda birleştir, dosyayı shell'le yeniden yazmak yerine `apply_patch`.
 4. **Thread'in büyümesi.** Codex'te modelin kendisinin çağırabildiği bir `new_context` aracı var ve Codex'in kendi rehberi sıkıştırmanın doğruluğa mal olabileceğini söylüyor. Kurallar diyor ki: geçmiş anlamını yitirince yeni bir bağlam başlat, ve thread ortasında model veya efor değiştirme — ölçüldü, bu cache'lenmiş ön-ek oranını 0.95'ten 0.07'ye düşürüyor.
 
@@ -132,9 +219,12 @@ codex plugin marketplace add sup3x/codex-eco
 codex plugin add eco@codex-eco
 ```
 
-Ölçülen fark: plugin ile kurulu skill'i çağırmak 35 çıktı token'ına, standalone kopya 131'e mal oldu — çünkü standalone yolda ajan `SKILL.md`'yi bir shell komutuyla okuyor, plugin yolunda gövde doğrudan veriliyor. Plugin yolu aktivasyonda daha ucuz; standalone yol masaüstü uygulamasının okuduğu yol. İkisini birlikte kurmak sorun değil.
+**Geri çekilen iddia.** Bu README'nin eski bir sürümü, plugin'in "gövdeyi doğrudan verdiğini" ve bu yüzden çağırmanın daha ucuz olduğunu söylüyordu. Bu yanlış. Plugin kuruluyken prompt üretildiğinde aynı tek katalog satırı görünüyor, gövde görünmüyor — plugin ile kurulu bir skill de tıpkı standalone olan gibi diskten okunuyor. İddianın arkasındaki 35'e karşı 131 token gözlemi tek ve tekrarlanmamış bir koşu çiftiydi; açıklaması ise kontrolü geçemedi.
 
-Dikkat: agresif profil plugin alt sistemini kapatıyor — onu plugin kurulumuyla değil, standalone kurulumla eşleştir.
+**İkisini birlikte kurmak, birini kurmaktan kötüdür.** Codex bir skill'i bulduğu her kökü yayınlar; yani standalone kopya ile plugin kopyası aynı ad altında *iki* katalog girdisi olur: her turda iki açıklama da faturalanır ve `$eco` artık tek bir gövdeyi işaret etmez. `node scripts/prefix-audit.mjs` bulduğu mükerrer kayıtları bildiriyor, ölçüm koşucusu da skill adı belirsizse partiyi başlatmayı reddediyor — ki bu kusuru, o ana kadar bu projenin çalıştırdığı her partide bulmuş oldu.
+
+Agresif profilin plugin alt sistemini kapattığını unutma: o profil standalone kurulumla eşleşir, plugin kurulumuyla değil.
+
 
 ### Profiller
 
@@ -144,11 +234,6 @@ codex --profile eco
 ```
 
 Profil açılışta katmanlanır; bu yüzden thread ortasında model/efor değiştirmenin yaptığı gibi cache'lenmiş ön-eki bozmaz, ve kaldırmak tek bir dosyayı silmek demektir.
-
-## Bir Codex skill'inin yapamadığı iki şey
-
-1. **Akıl yürütme eforunu değiştiremez.** Codex skill frontmatter'ı yalnızca `name`, `description` ve `metadata` kabul ediyor — bu projenin Claude Code kardeşinin aksine efor alanı yok. Efor bir profilden veya bayraktan gelir; `eco-max` bu yüzden hem skill hem profil olarak geliyor.
-2. **Bir hook shell çıktısını yeniden yazamaz.** Codex hook'ları `permissionDecision`, `updatedInput`, `additionalContext` ve `updatedMCPToolOutput` taşıyor; shell sonucunu yeniden yazacak bir alan yok. `tool_output_token_limit` bu işi yerleşik olarak yapıyor, bu yüzden bu proje hiç hook getirmiyor.
 
 ## Benzer çalışmalar
 

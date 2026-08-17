@@ -24,6 +24,10 @@
 
 param(
   [switch]$Uninstall,
+  [switch]$RulesOnly,
+  [switch]$SkillsOnly,
+  [switch]$Project,
+  [switch]$Full,
   [switch]$Help,
   # PowerShell binds "--uninstall" (the form install.sh documents) here rather
   # than to -Uninstall, and would otherwise ignore it and install instead.
@@ -41,13 +45,161 @@ $SkillScripts = @{}
 $SrcRoot = Join-Path (Join-Path (Join-Path $PSScriptRoot "plugins") "eco") "skills"
 $Stamp = [DateTime]::UtcNow.ToString("yyyyMMdd-HHmmss")
 
+$BlockStart = "<!-- codex-eco:start -->"
+$BlockEnd = "<!-- codex-eco:end -->"
+$DoRules = -not $SkillsOnly
+$DoSkills = -not $RulesOnly
+if ($Full) {
+  $RulesSrc = Join-Path $PSScriptRoot "AGENTS.eco.md"
+  $RulesLabel = "full"
+} else {
+  $RulesSrc = Join-Path $PSScriptRoot "AGENTS.eco.lean.md"
+  $RulesLabel = "short"
+}
+
+# Where the global AGENTS.md lives. Codex reads $CODEX_HOME/AGENTS.md for every
+# session whatever project you are in; verified with `codex debug prompt-input`,
+# which renders the exact model-visible prompt offline.
+function Get-RulesTarget {
+  if ($Project) { return (Join-Path (Get-Location).Path "AGENTS.md") }
+  if ($env:CODEX_HOME) { return (Join-Path $env:CODEX_HOME "AGENTS.md") }
+  if (-not $env:USERPROFILE) {
+    Stop-WithError "neither CODEX_HOME nor USERPROFILE is set - set one, or use -Project"
+  }
+  return (Join-Path (Join-Path $env:USERPROFILE ".codex") "AGENTS.md")
+}
+
+# Only the marker-delimited region: the explanatory comment around it in the
+# repository would otherwise be billed as tokens in every one of the user's turns.
+function Get-EcoBlock([string]$Path) {
+  $lines = @(Get-Content -LiteralPath $Path)
+  $out = New-Object System.Collections.Generic.List[string]
+  $inside = $false
+  foreach ($line in $lines) {
+    if ($line -match [regex]::Escape($BlockStart)) { $inside = $true }
+    if ($inside) { $out.Add($line) }
+    if ($inside -and $line -match [regex]::Escape($BlockEnd)) { break }
+  }
+  return $out.ToArray()
+}
+
+# Everything except a previously installed block, so re-install and uninstall can
+# never disagree about what the block is.
+function Remove-EcoBlock([string[]]$Lines) {
+  $out = New-Object System.Collections.Generic.List[string]
+  $inside = $false
+  foreach ($line in $Lines) {
+    if ($line -match [regex]::Escape($BlockStart)) { $inside = $true; continue }
+    if ($inside) {
+      if ($line -match [regex]::Escape($BlockEnd)) { $inside = $false }
+      continue
+    }
+    $out.Add($line)
+  }
+  return $out.ToArray()
+}
+
+function Remove-TrailingBlank([string[]]$Lines) {
+  $end = $Lines.Count - 1
+  while ($end -ge 0 -and [string]::IsNullOrWhiteSpace($Lines[$end])) { $end-- }
+  if ($end -lt 0) { return @() }
+  return $Lines[0..$end]
+}
+
+# Set-Content -Encoding utf8 writes a BOM on Windows PowerShell 5.1 and CRLF line
+# endings. This file is injected verbatim into the model prompt, and install.sh writes
+# it as LF with no BOM, so both installers must produce the same bytes.
+function Write-TextLf([string]$Path, [string[]]$Lines) {
+  $text = ($Lines -join "`n")
+  if ($text.Length -gt 0) { $text = $text + "`n" }
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText($Path, $text, $utf8NoBom)
+}
+
+function Backup-File([string]$Path) {
+  $dir = Join-Path (Split-Path -Parent $Path) ".eco-backups"
+  $leaf = Split-Path -Leaf $Path
+  $target = Join-Path $dir ($leaf + "-" + $Stamp)
+  $n = 1
+  while (Test-Path -LiteralPath $target) {
+    $target = Join-Path $dir ($leaf + "-" + $Stamp + "-" + $n)
+    $n++
+  }
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  Copy-Item -LiteralPath $Path -Destination $target
+  return $target
+}
+
+function Install-Rules {
+  $target = Get-RulesTarget
+  if (-not (Test-Path -LiteralPath $RulesSrc -PathType Leaf)) {
+    Stop-WithError ("missing rule source: " + $RulesSrc + " - run this from a full clone of the repository")
+  }
+  $block = Get-EcoBlock $RulesSrc
+  if ($block.Count -eq 0) {
+    Stop-WithError ("no " + $BlockStart + " ... " + $BlockEnd + " region in " + $RulesSrc)
+  }
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $target) | Out-Null
+
+  if (Test-Path -LiteralPath $target -PathType Leaf) {
+    $existing = @(Get-Content -LiteralPath $target)
+    $hadBlock = ($existing -join "`n") -match [regex]::Escape($BlockStart)
+    $backup = Backup-File $target
+    $kept = Remove-TrailingBlank (Remove-EcoBlock $existing)
+    $final = New-Object System.Collections.Generic.List[string]
+    foreach ($line in $kept) { $final.Add($line) }
+    if ($final.Count -gt 0) { $final.Add("") }
+    foreach ($line in $block) { $final.Add($line) }
+    Write-TextLf $target $final.ToArray()
+    if ($hadBlock) {
+      Write-Host ("  rules: block replaced in " + $target + " (" + $RulesLabel + "; previous file at " + $backup + ")")
+    } else {
+      Write-Host ("  rules: block appended to " + $target + " (" + $RulesLabel + "; previous file at " + $backup + ")")
+    }
+  } else {
+    Write-TextLf $target $block
+    Write-Host ("  rules: created " + $target + " with the " + $RulesLabel + " block")
+  }
+
+  $written = Get-Content -LiteralPath $target -Raw
+  if (-not ($written -match [regex]::Escape($BlockStart)) -or -not ($written -match [regex]::Escape($BlockEnd))) {
+    Stop-WithError ("verification failed: the markers are not both present in " + $target)
+  }
+}
+
+function Uninstall-Rules {
+  $target = Get-RulesTarget
+  if (-not (Test-Path -LiteralPath $target -PathType Leaf)) {
+    Write-Host ("  rules: no file at " + $target + " - nothing to remove")
+    return
+  }
+  $existing = @(Get-Content -LiteralPath $target)
+  if (-not (($existing -join "`n") -match [regex]::Escape($BlockStart))) {
+    Write-Host ("  rules: no codex-eco block in " + $target + " - nothing to remove")
+    return
+  }
+  $backup = Backup-File $target
+  $kept = Remove-TrailingBlank (Remove-EcoBlock $existing)
+  if ($kept.Count -gt 0) {
+    Write-TextLf $target $kept
+    Write-Host ("  rules: block removed from " + $target + " (copy of the previous file at " + $backup + ")")
+  } else {
+    Remove-Item -LiteralPath $target -Force
+    Write-Host ("  rules: block removed and " + $target + " deleted, since the block was all it contained (copy at " + $backup + ")")
+  }
+}
+
 function Show-Usage {
   Write-Host "Installs (or removes) the eco skills for Codex: eco and eco-max."
   Write-Host ""
   Write-Host "Usage"
   Write-Host "  .\install.ps1              install into `$env:CODEX_SKILLS_DIR, or"
   Write-Host "                             %USERPROFILE%\.agents\skills when that is unset"
-  Write-Host "  .\install.ps1 -Uninstall   remove the two skill directories this project installs"
+  Write-Host "  .\install.ps1 -RulesOnly   just the AGENTS.md block"
+  Write-Host "  .\install.ps1 -SkillsOnly  just the skills"
+  Write-Host "  .\install.ps1 -Project     write the block into .\AGENTS.md instead of the global one"
+  Write-Host "  .\install.ps1 -Full        the complete rule block instead of the short one"
+  Write-Host "  .\install.ps1 -Uninstall   remove the block and the skill directories"
   Write-Host "  .\install.ps1 -Help"
   Write-Host ""
   Write-Host "An existing copy is moved to <parent of the skills dir>\.eco-backups\<name>-<utc stamp>"
@@ -140,11 +292,18 @@ if ($env:CODEX_SKILLS_DIR) {
 }
 $backupRoot = Join-Path (Split-Path -Parent $dest) ".eco-backups"
 
-Write-Host "codex-eco skills"
-Write-Host ("  source:     " + $SrcRoot)
-Write-Host ("  skills dir: " + $dest + " (" + $origin + ")")
+Write-Host "codex-eco"
+if ($DoRules) {
+  Write-Host ("  rules:      " + (Get-RulesTarget) + " (" + $(if ($Project) { "project" } else { "global" }) + ", " + $RulesLabel + " block)")
+}
+if ($DoSkills) {
+  Write-Host ("  source:     " + $SrcRoot)
+  Write-Host ("  skills dir: " + $dest + " (" + $origin + ")")
+}
 
 if ($Uninstall) {
+  if ($DoRules) { Uninstall-Rules }
+  if (-not $DoSkills) { exit 0 }
   $removed = 0
   foreach ($name in $SkillNames) {
     $dst = Join-Path $dest $name
@@ -157,6 +316,13 @@ if ($Uninstall) {
     }
   }
   Write-Host ("Removed " + $removed + " of " + $SkillNames.Count + " skill directories from " + $dest + ".")
+  exit 0
+}
+
+if ($DoRules) { Install-Rules }
+
+if (-not $DoSkills) {
+  Write-Host "The rules are on for every new Codex session. Nothing to invoke."
   exit 0
 }
 

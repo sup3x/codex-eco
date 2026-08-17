@@ -1,10 +1,21 @@
 {
-  "$comment": "Which studies the README's results table is allowed to draw from. Everything in bench/raw/ is published; this file decides what counts as a HEADLINE claim. A single batch is not enough - see Amendment 3 in bench/preregistration/001-first-study.md, where the same configuration measured -49% in one batch and +24% in another. Studies listed here must be replicated or explicitly labelled.",
-  "studies": [],
+  "$comment": "Which studies the README's results section is allowed to draw from. Everything under bench/results/ is published; this file decides what counts as a HEADLINE claim. A single batch is not enough - the bar set in Amendment 3 is the direction repeating across independent batches, and the effect published is the range across them. scripts/build-charts.mjs reads this file and will write nothing if a study is not listed here.",
+  "studies": [
+    "thread-terra",
+    "eff-low",
+    "eff-medium",
+    "eff-high",
+    "eff-xhigh",
+    "eff-max"
+  ],
   "excluded": {
-    "partA-preamble": "wording experiment: its arms are variants, not a baseline-vs-eco headline",
-    "partB2-body-length": "body-length experiment on one model, and the batch that showed the variance problem",
-    "review-gpt-5-6-sol": "single un-replicated batch; superseded by the effort sweep. Published as data, not as a headline",
-    "review-gpt-5-6-terra": "single un-replicated batch that contradicts partB2 on the same body; the reason the headline waits"
+    "partA-preamble": "RETRACTED: 19 of its 20 skill runs never read SKILL.md, so its arms were the same untreated condition. Kept as data about invocation reliability.",
+    "partB2-body-length": "RETRACTED: same defect - 0 of 10 skill runs read the body. Kept for the same reason.",
+    "review-gpt-5-6-sol": "single un-replicated batch on the old single-turn framing, and on the skill surface that measurement later demoted",
+    "review-gpt-5-6-terra": "same as above",
+    "review-gpt-5-6-luna": "same as above, and 2 of its runs read a stale skill copy from $HOME",
+    "effort-low": "single-turn framing on the skill surface; superseded by the thread study and the eff-* replication",
+    "effort-medium": "same as above",
+    "effort-high": "aborted mid-batch when the skill surface was demoted; kept as raw data only"
   }
 }
