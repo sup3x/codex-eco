@@ -116,22 +116,24 @@ The most useful thing in this repository costs nothing to run and makes no model
 node scripts/prefix-audit.mjs
 ```
 
+<!-- codex-eco:audit:start -->
 ```
 section                           chars   ~tokens
 -------------------------------------------------
-skills catalog                   16,901     4,225
-recommended-plugins advert        2,849       712
+skills catalog                   15,211     3,803
+recommended-plugins advert        2,371       593
 core instruction prose            2,269       567
 multi-agent mode note               271        68
 -------------------------------------------------
-TOTAL before you type            22,290     5,573
+TOTAL before you type            20,122     5,031
 
 configuration                     chars   ~tokens      change
 -------------------------------------------------------------
-as configured now                22,290     5,573           -
-eco profile (safe)               14,684     3,671      -34.1%
-eco profile (aggressive)          9,768     2,442      -56.2%
+as configured now                20,122     5,031           -
+eco profile (safe)               13,166     3,292      −34.6%
+eco profile (aggressive)          8,250     2,063      −59.0%
 ```
+<!-- codex-eco:audit:end -->
 
 Those are real numbers from one machine, produced by `codex debug prompt-input` — the exact item list Codex will send. Run it in your own project and you get your own numbers, including what your `AGENTS.md` costs. Every key the audit suggests is validated against your Codex build with `codex mcp-server --strict-config` before it is offered, so a typo can never masquerade as a saving.
 
@@ -173,9 +175,21 @@ Every arm found both planted bugs in every run, so cheapness decides. The short 
 
 ![Replication across effort levels](assets/efforts.svg)
 
-The shipped block was run against no rules in 5 independent batches on `gpt-5.6-terra` (n=3 per arm): **5/5 batches moved the same way**, two-sided sign test p = 0.063. The effect ranged from **−7.0% to −25.1%**, and both planted bugs were found at every level in every run. The published number is that range, not any one batch.
+The shipped block was run against no rules in 7 independent batches on `gpt-5.6-terra` (n=3 per arm): **6/7 batches moved the same way**, two-sided sign test p = 0.125. Across the 5 levels whose batches agree, the effect ran from **−7.0% to −25.1%**; `none` is unresolved and is described below. Both planted bugs were found at every level in every run. The published number is that range, not any one batch.
 
 The trend is clear and its mechanism is plausible: the higher the effort, the longer the baseline's output, so the more fat there is to cut.
+
+| effort | cost | output | 95% CI | both bugs |
+|---|---:|---:|---|---|
+| `none #1` | **+34.1%** | −27.4% | −16.1% … 112.9% | yes |
+| `none #2` | **−9.1%** | −23.1% | −45.5% … 47.2% | yes |
+| `low` | **−7.0%** | −24.7% | −19.2% … 1.5% | yes |
+| `medium` | **−14.8%** | −20.4% | −23.5% … −5.0% | yes |
+| `high` | **−25.1%** | −35.3% | −37.9% … −17.4% | yes |
+| `xhigh` | **−18.6%** | −18.0% | −47.3% … 29.5% | yes |
+| `max` | **−24.1%** | −17.6% | −29.2% … −18.2% | yes |
+
+**At `none`, total cost is unresolved.** The 2 independent batches disagree (+34.1%, −9.1%), and the difference sits entirely in the cached/uncached split: with the same block, one batch billed 53,155 uncached tokens and the other 24,865. So the positive figure in the first batch was cache warmth, not a treatment effect — and a single batch would have "shown" the block to be harmful there. Output tokens fell consistently in both (−27.4% and −23.1%), and both planted bugs were found in every run. The total-cost claim therefore covers `low` and above; for `none` the honest word is unresolved, not worse.
 
 ### 4. And on every model
 

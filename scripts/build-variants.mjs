@@ -77,7 +77,15 @@ function main() {
   }
   for (const w of build()) console.log(`wrote ${w.dir}/SKILL.md (${w.bytes} bytes)`);
   console.log(
-    `\nRun them against each other with:\n  node bench/bench.mjs study review --n 5 \\\n    --variants ${VARIANTS.map((v) => `${v.id}=bench/candidates/${v.id}`).join(",")}`,
+    `\nRun them against each other with:\n  node bench/bench.mjs study review-thread --n 5 \\\n` +
+      `    --variants ${VARIANTS.map((v) => `${v.id}=bench/candidates/${v.id}`).join(",")}\n\n` +
+      `NOTE, and it is the reason a study like this was retracted once: --variants compares SKILL\n` +
+      `bodies, and Codex only loads a skill body if the agent decides to read it. Check the\n` +
+      `SKILL.md-read count the harness prints before believing any result from this path - a batch\n` +
+      `where the arms never read their bodies is a batch comparing a baseline against itself.\n` +
+      `For rule wording, prefer varying the AGENTS.md block instead, which is always loaded:\n` +
+      `  node bench/bench.mjs study review-thread --n 5 \\\n` +
+      `    --agents-file a=path/to/block-a.md,b=path/to/block-b.md`,
   );
   return 0;
 }

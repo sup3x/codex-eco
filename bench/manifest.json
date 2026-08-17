@@ -10234,6 +10234,990 @@
         "plantedTotal": 2,
         "bonus": 0
       }
+    },
+    "eff-none_baseline_01": {
+      "study": "effort-none",
+      "arm": "baseline",
+      "armKind": "baseline",
+      "rep": 1,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none_baseline_01_t1.jsonl",
+        "eff-none_baseline_01_t2.jsonl",
+        "eff-none_baseline_01_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": null,
+      "agentsDigest": null,
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1629,
+      "reasoningTokens": 0,
+      "inputTokens": 171352,
+      "cachedInputTokens": 156928,
+      "preambleCount": 1,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 30601,
+          "cachedInputTokens": 27136,
+          "outputTokens": 314,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 1,
+          "threadId": "01a01036-52bc-7672-8dff-dd2f33be7a09"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 62350,
+          "cachedInputTokens": 57344,
+          "outputTokens": 523,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01036-52bc-7672-8dff-dd2f33be7a09"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 78401,
+          "cachedInputTokens": 72448,
+          "outputTokens": 792,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01036-52bc-7672-8dff-dd2f33be7a09"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none_baseline_02": {
+      "study": "effort-none",
+      "arm": "baseline",
+      "armKind": "baseline",
+      "rep": 2,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none_baseline_02_t1.jsonl",
+        "eff-none_baseline_02_t2.jsonl",
+        "eff-none_baseline_02_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": null,
+      "agentsDigest": null,
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1776,
+      "reasoningTokens": 0,
+      "inputTokens": 172321,
+      "cachedInputTokens": 117760,
+      "preambleCount": 1,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 30695,
+          "cachedInputTokens": 14080,
+          "outputTokens": 364,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 1,
+          "threadId": "01a01037-c386-73f2-b9a8-b946b3b06fdc"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 62717,
+          "cachedInputTokens": 44288,
+          "outputTokens": 580,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01037-c386-73f2-b9a8-b946b3b06fdc"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 78909,
+          "cachedInputTokens": 59392,
+          "outputTokens": 832,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01037-c386-73f2-b9a8-b946b3b06fdc"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none_baseline_03": {
+      "study": "effort-none",
+      "arm": "baseline",
+      "armKind": "baseline",
+      "rep": 3,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none_baseline_03_t1.jsonl",
+        "eff-none_baseline_03_t2.jsonl",
+        "eff-none_baseline_03_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": null,
+      "agentsDigest": null,
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1668,
+      "reasoningTokens": 0,
+      "inputTokens": 172156,
+      "cachedInputTokens": 156928,
+      "preambleCount": 1,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 30686,
+          "cachedInputTokens": 27136,
+          "outputTokens": 347,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 1,
+          "threadId": "01a01038-4bac-7652-8bed-abcc95700e05"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 62661,
+          "cachedInputTokens": 57344,
+          "outputTokens": 536,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01038-4bac-7652-8bed-abcc95700e05"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 78809,
+          "cachedInputTokens": 72448,
+          "outputTokens": 785,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01038-4bac-7652-8bed-abcc95700e05"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none_lean_01": {
+      "study": "effort-none",
+      "arm": "lean",
+      "armKind": "agents",
+      "rep": 1,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none_lean_01_t1.jsonl",
+        "eff-none_lean_01_t2.jsonl",
+        "eff-none_lean_01_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": ".\\AGENTS.eco.lean.md",
+      "agentsDigest": "e0959491c570",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1127,
+      "reasoningTokens": 0,
+      "inputTokens": 173822,
+      "cachedInputTokens": 120832,
+      "preambleCount": 0,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 31157,
+          "cachedInputTokens": 15104,
+          "outputTokens": 188,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 0,
+          "threadId": "01a01036-dca0-7241-9b28-174175080ddf"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 63228,
+          "cachedInputTokens": 45312,
+          "outputTokens": 385,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01036-dca0-7241-9b28-174175080ddf"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 79437,
+          "cachedInputTokens": 60416,
+          "outputTokens": 554,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01036-dca0-7241-9b28-174175080ddf"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none_lean_02": {
+      "study": "effort-none",
+      "arm": "lean",
+      "armKind": "agents",
+      "rep": 2,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none_lean_02_t1.jsonl",
+        "eff-none_lean_02_t2.jsonl",
+        "eff-none_lean_02_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": ".\\AGENTS.eco.lean.md",
+      "agentsDigest": "e0959491c570",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1361,
+      "reasoningTokens": 0,
+      "inputTokens": 174199,
+      "cachedInputTokens": 151040,
+      "preambleCount": 0,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 31159,
+          "cachedInputTokens": 30208,
+          "outputTokens": 265,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 0,
+          "threadId": "01a01037-4eb5-7be0-a65e-ef03401cbf58"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 63387,
+          "cachedInputTokens": 60416,
+          "outputTokens": 442,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01037-4eb5-7be0-a65e-ef03401cbf58"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 79653,
+          "cachedInputTokens": 60416,
+          "outputTokens": 654,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01037-4eb5-7be0-a65e-ef03401cbf58"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none_lean_03": {
+      "study": "effort-none",
+      "arm": "lean",
+      "armKind": "agents",
+      "rep": 3,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none_lean_03_t1.jsonl",
+        "eff-none_lean_03_t2.jsonl",
+        "eff-none_lean_03_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": ".\\AGENTS.eco.lean.md",
+      "agentsDigest": "e0959491c570",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1197,
+      "reasoningTokens": 0,
+      "inputTokens": 173940,
+      "cachedInputTokens": 90624,
+      "preambleCount": 0,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 31159,
+          "cachedInputTokens": 15104,
+          "outputTokens": 216,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 0,
+          "threadId": "01a01038-d371-7c32-b3d9-5209a2c64a3a"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 63275,
+          "cachedInputTokens": 30208,
+          "outputTokens": 407,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01038-d371-7c32-b3d9-5209a2c64a3a"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 79506,
+          "cachedInputTokens": 45312,
+          "outputTokens": 574,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a01038-d371-7c32-b3d9-5209a2c64a3a"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none-b2_baseline_01": {
+      "study": "effort-none-b2",
+      "arm": "baseline",
+      "armKind": "baseline",
+      "rep": 1,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none-b2_baseline_01_t1.jsonl",
+        "eff-none-b2_baseline_01_t2.jsonl",
+        "eff-none-b2_baseline_01_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": null,
+      "agentsDigest": null,
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1507,
+      "reasoningTokens": 0,
+      "inputTokens": 171809,
+      "cachedInputTokens": 156928,
+      "preambleCount": 1,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 30673,
+          "cachedInputTokens": 27136,
+          "outputTokens": 282,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 1,
+          "threadId": "01a0103b-0359-7cd1-9e1a-e6b930e21fff"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 62518,
+          "cachedInputTokens": 57344,
+          "outputTokens": 491,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103b-0359-7cd1-9e1a-e6b930e21fff"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 78618,
+          "cachedInputTokens": 72448,
+          "outputTokens": 734,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103b-0359-7cd1-9e1a-e6b930e21fff"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none-b2_baseline_02": {
+      "study": "effort-none-b2",
+      "arm": "baseline",
+      "armKind": "baseline",
+      "rep": 2,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none-b2_baseline_02_t1.jsonl",
+        "eff-none-b2_baseline_02_t2.jsonl",
+        "eff-none-b2_baseline_02_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": null,
+      "agentsDigest": null,
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1513,
+      "reasoningTokens": 0,
+      "inputTokens": 171094,
+      "cachedInputTokens": 117760,
+      "preambleCount": 1,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 30580,
+          "cachedInputTokens": 14080,
+          "outputTokens": 281,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 1,
+          "threadId": "01a0103c-44d5-7c31-b361-1b93487f4ef3"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 62248,
+          "cachedInputTokens": 44288,
+          "outputTokens": 497,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103c-44d5-7c31-b361-1b93487f4ef3"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 78266,
+          "cachedInputTokens": 59392,
+          "outputTokens": 735,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103c-44d5-7c31-b361-1b93487f4ef3"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none-b2_baseline_03": {
+      "study": "effort-none-b2",
+      "arm": "baseline",
+      "armKind": "baseline",
+      "rep": 3,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none-b2_baseline_03_t1.jsonl",
+        "eff-none-b2_baseline_03_t2.jsonl",
+        "eff-none-b2_baseline_03_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": null,
+      "agentsDigest": null,
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1561,
+      "reasoningTokens": 0,
+      "inputTokens": 171150,
+      "cachedInputTokens": 156928,
+      "preambleCount": 1,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 30575,
+          "cachedInputTokens": 27136,
+          "outputTokens": 299,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 1,
+          "threadId": "01a0103c-e35f-7b10-a207-51eda4b99e68"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 62271,
+          "cachedInputTokens": 57344,
+          "outputTokens": 513,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103c-e35f-7b10-a207-51eda4b99e68"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 78304,
+          "cachedInputTokens": 72448,
+          "outputTokens": 749,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103c-e35f-7b10-a207-51eda4b99e68"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none-b2_lean_01": {
+      "study": "effort-none-b2",
+      "arm": "lean",
+      "armKind": "agents",
+      "rep": 1,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none-b2_lean_01_t1.jsonl",
+        "eff-none-b2_lean_01_t2.jsonl",
+        "eff-none-b2_lean_01_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": ".\\AGENTS.eco.lean.md",
+      "agentsDigest": "e0959491c570",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1108,
+      "reasoningTokens": 0,
+      "inputTokens": 173855,
+      "cachedInputTokens": 120832,
+      "preambleCount": 0,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 31157,
+          "cachedInputTokens": 15104,
+          "outputTokens": 206,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 0,
+          "threadId": "01a0103b-77f9-77a0-96fb-1300f69eacd8"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 63252,
+          "cachedInputTokens": 45312,
+          "outputTokens": 370,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103b-77f9-77a0-96fb-1300f69eacd8"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 79446,
+          "cachedInputTokens": 60416,
+          "outputTokens": 532,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103b-77f9-77a0-96fb-1300f69eacd8"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none-b2_lean_02": {
+      "study": "effort-none-b2",
+      "arm": "lean",
+      "armKind": "agents",
+      "rep": 2,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none-b2_lean_02_t1.jsonl",
+        "eff-none-b2_lean_02_t2.jsonl",
+        "eff-none-b2_lean_02_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": ".\\AGENTS.eco.lean.md",
+      "agentsDigest": "e0959491c570",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1225,
+      "reasoningTokens": 0,
+      "inputTokens": 173808,
+      "cachedInputTokens": 160000,
+      "preambleCount": 0,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 31157,
+          "cachedInputTokens": 28160,
+          "outputTokens": 183,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 0,
+          "threadId": "01a0103b-d0bd-7fb0-811a-09f578a8f054"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 63220,
+          "cachedInputTokens": 58368,
+          "outputTokens": 387,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103b-d0bd-7fb0-811a-09f578a8f054"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 79431,
+          "cachedInputTokens": 73472,
+          "outputTokens": 655,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103b-d0bd-7fb0-811a-09f578a8f054"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
+    },
+    "eff-none-b2_lean_03": {
+      "study": "effort-none-b2",
+      "arm": "lean",
+      "armKind": "agents",
+      "rep": 3,
+      "task": "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+      "turns": [
+        "Read test/orders.js, explain briefly what the module does, and identify any bugs.",
+        "Fix the crash you found. Do not change anything else.",
+        "What else in this module would you harden, and why?"
+      ],
+      "files": [
+        "eff-none-b2_lean_03_t1.jsonl",
+        "eff-none-b2_lean_03_t2.jsonl",
+        "eff-none-b2_lean_03_t3.jsonl"
+      ],
+      "fixture": "orders",
+      "skill": null,
+      "skillDigest": null,
+      "agentsFile": ".\\AGENTS.eco.lean.md",
+      "agentsDigest": "e0959491c570",
+      "model": "gpt-5.6-terra",
+      "effort": "none",
+      "verbosity": "(model default)",
+      "codexVersion": "codex-cli 0.147.0",
+      "rubric": "orders-review",
+      "costWeights": {
+        "uncachedInput": 1,
+        "cachedInput": 0.1,
+        "output": 8
+      },
+      "date": "2026-08-17",
+      "outputTokens": 1190,
+      "reasoningTokens": 0,
+      "inputTokens": 173907,
+      "cachedInputTokens": 166144,
+      "preambleCount": 0,
+      "commandCount": 1,
+      "perTurn": [
+        {
+          "turn": 1,
+          "inputTokens": 31157,
+          "cachedInputTokens": 30208,
+          "outputTokens": 205,
+          "reasoningTokens": 0,
+          "commandCount": 1,
+          "preambleCount": 0,
+          "threadId": "01a0103d-583b-7910-a53f-967048b5e7d6"
+        },
+        {
+          "turn": 2,
+          "inputTokens": 63262,
+          "cachedInputTokens": 60416,
+          "outputTokens": 402,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103d-583b-7910-a53f-967048b5e7d6"
+        },
+        {
+          "turn": 3,
+          "inputTokens": 79488,
+          "cachedInputTokens": 75520,
+          "outputTokens": 583,
+          "reasoningTokens": 0,
+          "commandCount": 0,
+          "preambleCount": 0,
+          "threadId": "01a0103d-583b-7910-a53f-967048b5e7d6"
+        }
+      ],
+      "grade": {
+        "rubric": "orders-review",
+        "criteria": {
+          "crash-bug": true,
+          "nan-bug": true,
+          "proto-bug": false
+        },
+        "planted": 2,
+        "plantedTotal": 2,
+        "bonus": 0
+      }
     }
   }
 }

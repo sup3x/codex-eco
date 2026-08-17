@@ -1,6 +1,6 @@
 {
   "name": "codex-eco",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Token-frugal skills for OpenAI Codex (CLI and the ChatGPT desktop app), with the measurement harness that keeps their claims honest.",
   "license": "MIT",

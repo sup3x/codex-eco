@@ -609,3 +609,55 @@ reader's saving depends on what they have installed, exactly as the audit's foot
 `scripts/validate-repo.mjs` now fails on any known top-level key written under a `[section]` header, with
 the measured cost of the mistake in the message. The negative test for that gate is in the commit that
 added it.
+
+---
+
+## Amendment 8 — the sixth rung, and a result that one batch would have got backwards
+
+`minimal` reasoning effort, which several published Codex guides recommend, does not exist. The CLI
+accepts the string; the request then fails, and the server names its own ladder in the refusal:
+
+```
+Unsupported value: 'minimal' is not supported with the 'gpt-5.6-terra-...' model.
+Supported values are: 'none', 'low', 'medium', 'high', 'xhigh', and 'max'.
+```
+
+So the floor is **`none`**, not `low` — it runs, and it produces exactly zero reasoning tokens. That is a
+sixth rung the effort sweep had not covered, and covering it produced the most instructive result in this
+project.
+
+**Batch 1 said the block was 34.1% more expensive at `none`.** Output tokens had still fallen 27.4%, both
+planted bugs were still found in 3/3, and the command count was identical at 1.0 — so the behaviour was
+what the rules intend and the cost had gone the other way. Taken alone, that reads as a clear finding:
+do not use the block at `none`.
+
+**Batch 2, identical in every respect, said −9.1%.**
+
+| batch | output | uncached input | cached input | weighted |
+|---|---:|---:|---:|---:|
+| `eff-none` baseline | 1,691 | 28,071 | 143,872 | 55,986 |
+| `eff-none` block | 1,228 | **53,155** | 120,832 | 75,065 (+34.1%) |
+| `eff-none-b2` baseline | 1,527 | 27,479 | 143,872 | 54,082 |
+| `eff-none-b2` block | 1,174 | **24,865** | 148,992 | 49,159 (−9.1%) |
+
+The same 1.1 kB block billed 53,155 uncached tokens in one batch and 24,865 in the other. Nothing about
+the treatment changed between them; what changed is how much of the prefix arrived cached. So batch 1's
++34.1% was cache warmth, not a treatment effect — and the pre-registered rule that a direction is only
+claimed when it repeats is the only reason this repository does not now contain a confident, wrong
+sentence about `none`.
+
+What is published, therefore:
+
+- **Total cost at `none` is unresolved.** Two batches, opposite signs, both intervals spanning zero
+  widely (−16.1…+112.9 and −45.5…+47.2). The claim covers `low` and above.
+- **Output tokens at `none` fall consistently** — −27.4% and −23.1% — so the reply discipline works
+  there; it is the input side that is not resolvable at this n.
+- **Quality holds at `none`**: both planted bugs in every run of both batches, with zero reasoning tokens
+  spent. Worth knowing, and not the same as recommending `none` for work that matters.
+
+The effort table and chart show both `none` batches as separate rows rather than averaging them, because
+the disagreement is the finding. The chart draws batch 1 in red at its true size.
+
+Across everything now recorded: **thirteen independent batches** — seven effort levels (six rungs, one
+measured twice), six models — of which twelve moved the same way, and the one that did not is explained
+above rather than dropped. Quality held in all thirteen.

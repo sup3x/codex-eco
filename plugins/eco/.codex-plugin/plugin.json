@@ -1,6 +1,6 @@
 {
   "name": "eco",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "interface": {
     "displayName": "Eco",
     "shortDescription": "Spend fewer tokens per turn, with a correctness floor that is measured, not asserted",

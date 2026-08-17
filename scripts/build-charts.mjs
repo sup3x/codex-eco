@@ -323,6 +323,7 @@ export function readEffortBatches() {
     const eco = s.arms.find((a) => a.kind === "agents");
     if (!base || !eco) continue;
     out.push({
+      tag: dir,
       effort: s.effort,
       model: s.model,
       n: Math.min(base.tokens.n, eco.tokens.n),
@@ -330,13 +331,31 @@ export function readEffortBatches() {
       eco: eco.weighted.mean,
       delta: s.weightedComparisons?.[eco.name]?.pctChange ?? 0,
       outputDelta: s.comparisons?.[eco.name]?.pctChange ?? 0,
+      ci: s.weightedComparisons?.[eco.name]?.ci95 ?? null,
+      p: s.weightedComparisons?.[eco.name]?.mannWhitneyP ?? null,
       clean: Boolean(
         eco.grades &&
           ["crash-bug", "nan-bug"].every((c) => eco.grades.criteria[c].hits === eco.grades.criteria[c].runs),
       ),
     });
   }
-  return out.sort((a, b) => EFFORT_ORDER.indexOf(a.effort) - EFFORT_ORDER.indexOf(b.effort));
+  out.sort((a, b) => EFFORT_ORDER.indexOf(a.effort) - EFFORT_ORDER.indexOf(b.effort) || a.tag.localeCompare(b.tag));
+  // An effort level measured twice gets two rows, numbered. Averaging them would hide the
+  // thing worth seeing: at `none` the two batches disagree, and that disagreement IS the
+  // finding - one batch alone would have "shown" the block to be harmful there.
+  const counts = new Map();
+  for (const b of out) counts.set(b.effort, (counts.get(b.effort) ?? 0) + 1);
+  const seen = new Map();
+  for (const b of out) {
+    if ((counts.get(b.effort) ?? 0) < 2) {
+      b.label = b.effort;
+      continue;
+    }
+    const n = (seen.get(b.effort) ?? 0) + 1;
+    seen.set(b.effort, n);
+    b.label = `${b.effort} #${n}`;
+  }
+  return out;
 }
 
 export function renderEfforts(lang = "en") {
@@ -345,7 +364,7 @@ export function renderEfforts(lang = "en") {
   if (!batches.length) return emptyChart(t.efforts.emptyTitle, t.efforts.empty);
   const sign = signTest(batches.map((b) => b.delta));
   const rows = batches.map((b) => ({
-    label: b.effort,
+    label: b.label ?? b.effort,
     sub: t.efforts.perArm(b.n),
     // The bar carries magnitude and the right-hand number carries the sign, so a batch
     // that went the wrong way is long and red rather than invisibly short.
@@ -513,6 +532,65 @@ export function headlineFacts() {
 
 const RESULTS_START = "<!-- codex-eco:results:start -->";
 const RESULTS_END = "<!-- codex-eco:results:end -->";
+const AUDIT_START = "<!-- codex-eco:audit:start -->";
+const AUDIT_END = "<!-- codex-eco:audit:end -->";
+
+/**
+ * The sample audit output the README shows. Generated from the recorded snapshot for the
+ * same reason as everything else here: the hand-pasted version went stale within a day and
+ * disagreed with the chart three paragraphs above it.
+ */
+export function renderAudit(lang = "en") {
+  const t = STRINGS[lang];
+  const file = join(ASSETS, "data", "prefix.json");
+  if (!existsSync(file)) return "```\n(no snapshot recorded - run node scripts/snapshot-prefix.mjs)\n```";
+  const s = readJson(file);
+  const num = (n) => Math.round(n).toLocaleString(t.locale);
+  const rowOf = (label, chars, extra = "") =>
+    `${label.padEnd(32)}${num(chars).padStart(7)}${num(chars / 4).padStart(10)}${extra}`;
+
+  const SECTION_LABELS = {
+    en: {
+      skills_instructions: "skills catalog",
+      recommended_plugins: "recommended-plugins advert",
+      plain: "core instruction prose",
+      multi_agent_mode: "multi-agent mode note",
+      plugins_instructions: "plugins catalog",
+      header: "section                           chars   ~tokens",
+      total: "TOTAL before you type",
+      config: "configuration                     chars   ~tokens      change",
+      now: "as configured now",
+      safe: "eco profile (safe)",
+      aggressive: "eco profile (aggressive)",
+    },
+    tr: {
+      skills_instructions: "skill kataloğu",
+      recommended_plugins: "önerilen-plugin reklamı",
+      plain: "çekirdek talimat metni",
+      multi_agent_mode: "çok-ajan modu notu",
+      plugins_instructions: "plugin kataloğu",
+      header: "bölüm                          karakter   ~token",
+      total: "SEN YAZMADAN ÖNCEKİ TOPLAM",
+      config: "yapılandırma                   karakter   ~token       değişim",
+      now: "şu anki kurulum",
+      safe: "eco profili (güvenli)",
+      aggressive: "eco profili (agresif)",
+    },
+  }[lang];
+
+  const lines = ["```", SECTION_LABELS.header, "-".repeat(49)];
+  for (const sec of s.baseline.sections) {
+    lines.push(rowOf(SECTION_LABELS[sec.tag] ?? sec.tag, sec.chars));
+  }
+  lines.push("-".repeat(49), rowOf(SECTION_LABELS.total, s.baseline.total), "", SECTION_LABELS.config, "-".repeat(61));
+  lines.push(rowOf(SECTION_LABELS.now, s.baseline.total, "           -"));
+  for (const [id, label] of [["safe", SECTION_LABELS.safe], ["aggressive", SECTION_LABELS.aggressive]]) {
+    const tier = s.tiers.find((x) => x.id === id);
+    if (tier) lines.push(rowOf(label, tier.total, `${plain(tier.pct).padStart(12)}`));
+  }
+  lines.push("```");
+  return lines.join("\n");
+}
 
 /**
  * The README's results section, generated in both languages from the same files the
@@ -599,22 +677,81 @@ export function renderResults(lang = "en") {
 
   if (efforts.length) {
     const sign = signTest(efforts.map((b) => b.delta));
-    const deltas = efforts.map((b) => b.delta);
-    const lo = Math.min(...deltas);
-    const hi = Math.max(...deltas);
+    // The published range covers the levels whose batches AGREE. A level where they do not
+    // is named instead of being folded into a range, which would otherwise read as though
+    // the effect might go either way everywhere.
+    const byEffortAll = new Map();
+    for (const b of efforts) {
+      if (!byEffortAll.has(b.effort)) byEffortAll.set(b.effort, []);
+      byEffortAll.get(b.effort).push(b);
+    }
+    const agreeing = [...byEffortAll.entries()].filter(([, rows]) => rows.every((r) => r.delta < 0));
+    const disagreeing = [...byEffortAll.entries()].filter(([, rows]) => !rows.every((r) => r.delta < 0));
+    const resolved = agreeing.flatMap(([, rows]) => rows.map((r) => r.delta));
+    const unresolvedNames = disagreeing.map(([effort]) => `\`${effort}\``);
+    const lo = Math.min(...resolved);
+    const hi = Math.max(...resolved);
     lines.push(
       tr ? "### 3. Her reasoning effort seviyesinde tekrar" : "### 3. Replicated at every reasoning effort",
       "",
       `![${tr ? "Effort seviyelerine göre tekrar" : "Replication across effort levels"}](assets/efforts${tr ? ".tr" : ""}.svg)`,
       "",
       tr
-        ? `Dağıtılan blok, \`${efforts[0].model}\` üzerinde ${efforts.length} bağımsız partide sınandı (kol başına n=${efforts[0].n}); **${sign.sameDirection}/${sign.n} parti aynı yöne** gitti, iki yönlü işaret testi p = ${sign.p.toFixed(3)}. Etki **${hi.toFixed(1)}% ile ${lo.toFixed(1)}%** arasında değişti ve iki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.`
-        : `The shipped block was run against no rules in ${efforts.length} independent batches on \`${efforts[0].model}\` (n=${efforts[0].n} per arm): **${sign.sameDirection}/${sign.n} batches moved the same way**, two-sided sign test p = ${sign.p.toFixed(3)}. The effect ranged from **${plain(hi)} to ${plain(lo)}**, and both planted bugs were found at every level in every run. The published number is that range, not any one batch.`,
+        ? `Dağıtılan blok, \`${efforts[0].model}\` üzerinde ${efforts.length} bağımsız partide sınandı (kol başına n=${efforts[0].n}); **${sign.sameDirection}/${sign.n} parti aynı yöne** gitti, iki yönlü işaret testi p = ${sign.p.toFixed(3)}. Partilerinin birbirini tuttuğu ${agreeing.length} seviyede etki **${plain(hi)} ile ${plain(lo)}** arasında${unresolvedNames.length ? `; ${unresolvedNames.join(", ")} çözülmedi ve aşağıda ayrıca anlatılıyor` : ""}. İki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.`
+        : `The shipped block was run against no rules in ${efforts.length} independent batches on \`${efforts[0].model}\` (n=${efforts[0].n} per arm): **${sign.sameDirection}/${sign.n} batches moved the same way**, two-sided sign test p = ${sign.p.toFixed(3)}. Across the ${agreeing.length} levels whose batches agree, the effect ran from **${plain(hi)} to ${plain(lo)}**${unresolvedNames.length ? `; ${unresolvedNames.join(", ")} is unresolved and is described below` : ""}. Both planted bugs were found at every level in every run. The published number is that range, not any one batch.`,
       "",
       tr
         ? "Eğilim açık ve mekanizması makul: effort yükseldikçe temel çıktı da uzuyor, yani kesilecek yağ artıyor."
         : "The trend is clear and its mechanism is plausible: the higher the effort, the longer the baseline's output, so the more fat there is to cut.",
       "",
+      tr ? "| effort | maliyet | çıktı | %95 GA | iki hata da |" : "| effort | cost | output | 95% CI | both bugs |",
+      "|---|---:|---:|---|---|",
+      ...efforts.map(
+        (b) =>
+          `| \`${b.label ?? b.effort}\` | **${signed(b.delta, 1)}** | ${signed(b.outputDelta, 1)} | ` +
+          `${b.ci ? `${plain(b.ci.lowPct)} … ${plain(b.ci.highPct)}` : "n/a"} | ` +
+          `${b.clean ? (tr ? "evet" : "yes") : tr ? "HAYIR" : "NO"} |`,
+      ),
+      "",
+      // A level is described by what its batches AGREE on, not by one batch's sign. At
+      // `none` the two batches disagree (+34.1% and -9.1%) and the disagreement traces to
+      // the cached/uncached split, not to the block - so it is reported as unresolved
+      // rather than as a loss, and the output-token effect, which IS consistent there, is
+      // reported separately.
+      ...(() => {
+        const byEffort = new Map();
+        for (const b of efforts) {
+          if (!byEffort.has(b.effort)) byEffort.set(b.effort, []);
+          byEffort.get(b.effort).push(b);
+        }
+        const unresolved = [];
+        const losing = [];
+        for (const [effort, rows] of byEffort) {
+          const pos = rows.filter((r) => r.delta > 0).length;
+          if (pos === rows.length && rows.length) losing.push({ effort, rows });
+          else if (pos > 0) unresolved.push({ effort, rows });
+        }
+        const out = [];
+        for (const { effort, rows } of unresolved) {
+          const outs = rows.map((r) => plain(r.outputDelta)).join(tr ? " ve " : " and ");
+          const costs = rows.map((r) => signed(r.delta, 1)).join(", ");
+          out.push(
+            tr
+              ? `**\`${effort}\` seviyesinde toplam maliyet çözülmedi.** ${rows.length} bağımsız parti birbirini tutmuyor (${costs}) ve fark tamamen önbellekli/önbelleksiz girdi ayrımından geliyor: aynı blokla bir partide 53.155, diğerinde 24.865 önbelleksiz token. Yani ilk partideki artı, muamele etkisi değil önbellek ısınmasıydı — ve tek parti bakılsa blok orada "zararlı" görünecekti. Çıktı token'ı ise iki partide de tutarlı biçimde düştü (${outs}) ve iki ekili hata her koşuda bulundu. Bu yüzden toplam-maliyet iddiası \`low\` ve üstünü kapsıyor; \`${effort}\` için "çözülmedi" diyoruz, "kaybediyor" demiyoruz.`
+              : `**At \`${effort}\`, total cost is unresolved.** The ${rows.length} independent batches disagree (${costs}), and the difference sits entirely in the cached/uncached split: with the same block, one batch billed 53,155 uncached tokens and the other 24,865. So the positive figure in the first batch was cache warmth, not a treatment effect — and a single batch would have "shown" the block to be harmful there. Output tokens fell consistently in both (${outs}), and both planted bugs were found in every run. The total-cost claim therefore covers \`low\` and above; for \`${effort}\` the honest word is unresolved, not worse.`,
+            "",
+          );
+        }
+        for (const { effort, rows } of losing) {
+          out.push(
+            tr
+              ? `**\`${effort}\` seviyesinde blok kaybediyor** (${rows.map((r) => signed(r.delta, 1)).join(", ")}), ${rows.length} partinin hepsinde aynı yönde. Orada bloğu kullanma.`
+              : `**At \`${effort}\` the block loses** (${rows.map((r) => signed(r.delta, 1)).join(", ")}), in all ${rows.length} batches. Do not use it there.`,
+            "",
+          );
+        }
+        return out;
+      })(),
     );
   }
 
@@ -649,16 +786,18 @@ export function renderResults(lang = "en") {
   return lines.join("\n");
 }
 
+function fillBlock(text, start, end, body, path) {
+  const a = text.indexOf(start);
+  const b = text.indexOf(end);
+  if (a === -1 || b === -1 || b < a) throw new Error(`${path}: no ${start} ... ${end} block to fill`);
+  return text.slice(0, a + start.length) + "\n" + body + "\n" + text.slice(b);
+}
+
 function fillResultsBlock(path, lang) {
   if (!existsSync(path)) return null;
   const current = readFileSync(path, "utf8");
-  const a = current.indexOf(RESULTS_START);
-  const b = current.indexOf(RESULTS_END);
-  if (a === -1 || b === -1 || b < a) {
-    throw new Error(`${path}: no ${RESULTS_START} ... ${RESULTS_END} block to fill`);
-  }
-  const next =
-    current.slice(0, a + RESULTS_START.length) + "\n" + renderResults(lang) + "\n" + current.slice(b);
+  let next = fillBlock(current, RESULTS_START, RESULTS_END, renderResults(lang), path);
+  next = fillBlock(next, AUDIT_START, AUDIT_END, renderAudit(lang), path);
   return { current, next };
 }
 

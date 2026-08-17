@@ -100,22 +100,24 @@ Bu depodaki en faydalı şey çalıştırmak bedava ve hiçbir model çağrısı
 node scripts/prefix-audit.mjs
 ```
 
+<!-- codex-eco:audit:start -->
 ```
-section                           chars   ~tokens
+bölüm                          karakter   ~token
 -------------------------------------------------
-skills catalog                   16,901     4,225
-recommended-plugins advert        2,849       712
-core instruction prose            2,269       567
-multi-agent mode note               271        68
+skill kataloğu                   15.211     3.803
+önerilen-plugin reklamı           2.371       593
+çekirdek talimat metni            2.269       567
+çok-ajan modu notu                  271        68
 -------------------------------------------------
-TOTAL before you type            22,290     5,573
+SEN YAZMADAN ÖNCEKİ TOPLAM       20.122     5.031
 
-configuration                     chars   ~tokens      change
+yapılandırma                   karakter   ~token       değişim
 -------------------------------------------------------------
-as configured now                22,290     5,573           -
-eco profile (safe)               14,684     3,671      -34.1%
-eco profile (aggressive)          9,768     2,442      -56.2%
+şu anki kurulum                  20.122     5.031           -
+eco profili (güvenli)            13.166     3.292      −34.6%
+eco profili (agresif)             8.250     2.063      −59.0%
 ```
+<!-- codex-eco:audit:end -->
 
 Bunlar tek bir makineden gelen gerçek sayılar; `codex debug prompt-input` üretiyor, yani Codex'in göndereceği tam öğe listesi. Kendi projende çalıştırırsan kendi sayılarını görürsün — `AGENTS.md` dosyanın maliyeti dahil. Denetimin önerdiği her anahtar, önerilmeden önce `codex mcp-server --strict-config` ile senin Codex sürümüne karşı doğrulanır; böylece bir yazım hatası asla tasarruf gibi görünemez.
 
@@ -157,9 +159,21 @@ Her kol, her koşuda iki ekili hatayı da buldu; karar bu yüzden ucuzluğa kal�
 
 ![Effort seviyelerine göre tekrar](assets/efforts.tr.svg)
 
-Dağıtılan blok, `gpt-5.6-terra` üzerinde 5 bağımsız partide sınandı (kol başına n=3); **5/5 parti aynı yöne** gitti, iki yönlü işaret testi p = 0.063. Etki **-7.0% ile -25.1%** arasında değişti ve iki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.
+Dağıtılan blok, `gpt-5.6-terra` üzerinde 7 bağımsız partide sınandı (kol başına n=3); **6/7 parti aynı yöne** gitti, iki yönlü işaret testi p = 0.125. Partilerinin birbirini tuttuğu 5 seviyede etki **−7.0% ile −25.1%** arasında; `none` çözülmedi ve aşağıda ayrıca anlatılıyor. İki ekili hata her seviyede, her koşuda bulundu. Yayınlanan sayı bu aralıktır; tek bir parti değil.
 
 Eğilim açık ve mekanizması makul: effort yükseldikçe temel çıktı da uzuyor, yani kesilecek yağ artıyor.
+
+| effort | maliyet | çıktı | %95 GA | iki hata da |
+|---|---:|---:|---|---|
+| `none #1` | **+34.1%** | −27.4% | −16.1% … 112.9% | evet |
+| `none #2` | **−9.1%** | −23.1% | −45.5% … 47.2% | evet |
+| `low` | **−7.0%** | −24.7% | −19.2% … 1.5% | evet |
+| `medium` | **−14.8%** | −20.4% | −23.5% … −5.0% | evet |
+| `high` | **−25.1%** | −35.3% | −37.9% … −17.4% | evet |
+| `xhigh` | **−18.6%** | −18.0% | −47.3% … 29.5% | evet |
+| `max` | **−24.1%** | −17.6% | −29.2% … −18.2% | evet |
+
+**`none` seviyesinde toplam maliyet çözülmedi.** 2 bağımsız parti birbirini tutmuyor (+34.1%, −9.1%) ve fark tamamen önbellekli/önbelleksiz girdi ayrımından geliyor: aynı blokla bir partide 53.155, diğerinde 24.865 önbelleksiz token. Yani ilk partideki artı, muamele etkisi değil önbellek ısınmasıydı — ve tek parti bakılsa blok orada "zararlı" görünecekti. Çıktı token'ı ise iki partide de tutarlı biçimde düştü (−27.4% ve −23.1%) ve iki ekili hata her koşuda bulundu. Bu yüzden toplam-maliyet iddiası `low` ve üstünü kapsıyor; `none` için "çözülmedi" diyoruz, "kaybediyor" demiyoruz.
 
 ### 4. Ve her modelde
 
