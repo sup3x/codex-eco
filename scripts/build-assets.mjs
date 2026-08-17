@@ -23,7 +23,6 @@ import { headlineFacts } from "./build-charts.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = join(REPO, "bench", "manifest.json");
-const HEADLINE = join(REPO, "bench", "headline.json");
 const ASSETS = join(REPO, "assets");
 const CARD_HTML = join(ASSETS, "social-preview.html");
 const CARD_PNG = join(ASSETS, "social-preview.png");
@@ -36,47 +35,17 @@ const CHROME_CANDIDATES = [
   "/usr/bin/chromium",
 ];
 
-const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-/** Group published runs into { model -> { arm -> [outputTokens] } } plus grading counts. */
+/**
+ * What the card is allowed to say. The per-model aggregation that used to live here was
+ * dead once headlineFacts() became the single source: it keyed on arm names that no longer
+ * exist, so it reported "0 model rows" while the charts drew six.
+ */
 export function readData() {
-  if (!existsSync(MANIFEST)) return { runs: 0, models: [], facts: headlineFacts() };
-  const manifest = JSON.parse(readFileSync(MANIFEST, "utf8").replace(/^\ufeff/, ""));
-  const allRows = Object.entries(manifest.runs ?? {}).map(([id, r]) => ({ id, ...r }));
-  if (!allRows.length) return { runs: 0, models: [], facts: headlineFacts() };
-
-  // Everything in bench/raw is published; only the studies listed in
-  // bench/headline.json may drive the README table. One batch is not a headline:
-  // the same configuration measured -49% in one batch and +24% in another.
-  const headline = existsSync(HEADLINE) ? JSON.parse(readFileSync(HEADLINE, "utf8")) : { studies: [] };
-  const allowed = new Set(headline.studies ?? []);
-  const rows = allRows.filter((r) => allowed.has(r.study));
-
-  const byModel = new Map();
-  for (const r of rows) {
-    if (!r.model || r.outputTokens == null) continue;
-    if (r.arm !== "baseline" && r.arm !== "skill") continue;
-    if (!byModel.has(r.model)) byModel.set(r.model, { model: r.model, arms: new Map() });
-    const entry = byModel.get(r.model);
-    const arm = r.arm === "baseline" ? "baseline" : "eco";
-    if (!entry.arms.has(arm)) entry.arms.set(arm, []);
-    entry.arms.get(arm).push(r.outputTokens);
-  }
-
-  const models = [];
-  for (const { model, arms } of byModel.values()) {
-    const base = arms.get("baseline") ?? [];
-    const eco = arms.get("eco") ?? [];
-    if (!base.length || !eco.length) continue;
-    const b = mean(base);
-    const e = mean(eco);
-    models.push({ model, baseline: b, eco: e, n: Math.min(base.length, eco.length), delta: ((e - b) / b) * 100 });
-  }
-  models.sort((a, b) => a.delta - b.delta);
-  return { runs: allRows.length, headlineRuns: rows.length, models, facts: headlineFacts() };
+  const manifest = existsSync(MANIFEST) ? JSON.parse(readFileSync(MANIFEST, "utf8").replace(/^﻿/, "")) : { runs: {} };
+  return { runs: Object.keys(manifest.runs ?? {}).length, facts: headlineFacts() };
 }
-
 
 // ------------------------------------------------------------------- the card
 
@@ -297,7 +266,7 @@ function main() {
       console.error("run `node scripts/build-assets.mjs` and commit the result.");
       return 1;
     }
-    console.log(`ok: assets match the data (${data.runs} published runs, ${data.models.length} model rows)`);
+    console.log(`ok: assets match the data (${data.runs} published runs)`);
     return 0;
   }
 
@@ -307,7 +276,12 @@ function main() {
     console.log(`wrote ${a.file} (${a.content.length} bytes)`);
   }
   if (png) rasterise();
-  console.log(`data: ${data.runs} published runs, ${data.models.length} model rows`);
+  const f = data.facts ?? {};
+  console.log(
+    `data: ${data.runs} published runs | ` +
+      `${f.efforts ? `${f.efforts.n} effort batches` : "no effort batches"} | ` +
+      `${f.models ? `${f.models.n} models` : "no model rows"}`,
+  );
   return 0;
 }
 

@@ -1,28 +1,29 @@
 {
-  "$comment": "Which studies the README's results section is allowed to draw from. Everything under bench/results/ is published; this file decides what counts as a HEADLINE claim. A single batch is not enough - the bar set in Amendment 3 is the direction repeating across independent batches, and the effect published is the range across them. scripts/build-charts.mjs reads this file and will write nothing if a study is not listed here.",
+  "$comment": "Which STUDIES the README's results section and the charts may draw from. Keys are study ids as recorded in bench/manifest.json - the published record - not working-directory tags, because every published number must be derivable from committed data. Everything in bench/raw/ is published; this file decides what counts as a HEADLINE claim. One batch is not enough: the bar set in Amendment 3 is the direction repeating across independent batches, and the effect published is the range across them.",
   "studies": [
-    "thread-terra",
-    "eff-low",
-    "eff-medium",
-    "eff-high",
-    "eff-xhigh",
-    "eff-max",
-    "mdl-gpt-5.6-sol",
-    "mdl-gpt-5.6-luna",
-    "mdl-gpt-5.5",
-    "mdl-gpt-5.4",
-    "mdl-gpt-5.4-mini",
-    "eff-none",
-    "eff-none-b2"
+    "mechanism-thread",
+    "effort-none",
+    "effort-none-b2",
+    "effort-low",
+    "effort-medium",
+    "effort-high",
+    "effort-xhigh",
+    "effort-max",
+    "model-gpt-5.6-sol",
+    "model-gpt-5.6-luna",
+    "model-gpt-5.5",
+    "model-gpt-5.4",
+    "model-gpt-5.4-mini"
   ],
   "excluded": {
-    "partA-preamble": "RETRACTED: 19 of its 20 skill runs never read SKILL.md, so its arms were the same untreated condition. Kept as data about invocation reliability.",
-    "partB2-body-length": "RETRACTED: same defect - 0 of 10 skill runs read the body. Kept for the same reason.",
-    "review-gpt-5-6-sol": "single un-replicated batch on the old single-turn framing, and on the skill surface that measurement later demoted",
-    "review-gpt-5-6-terra": "same as above",
-    "review-gpt-5-6-luna": "same as above, and 2 of its runs read a stale skill copy from $HOME",
-    "effort-low": "single-turn framing on the skill surface; superseded by the thread study and the eff-* replication",
-    "effort-medium": "same as above",
-    "effort-high": "aborted mid-batch when the skill surface was demoted; kept as raw data only"
+    "retracted-partA-preamble": "RETRACTED: 19 of its 20 skill runs never read SKILL.md, so its arms were the same untreated condition. Kept as data about invocation reliability.",
+    "retracted-partB2-body-length": "RETRACTED: same defect - 0 of 10 skill runs read the body.",
+    "superseded-review-sol": "single un-replicated batch on the old single-turn framing, and on the skill surface that measurement later demoted",
+    "superseded-review-terra": "same as above",
+    "superseded-review-luna": "same as above, and 2 of its runs read a stale skill copy from $HOME",
+    "mechanism-single-turn": "the single-turn mechanism study; correct as measured, but single-turn is the worst case for an always-on block, so the thread study supersedes it as the headline",
+    "superseded-effort-low-skill": "single-turn framing on the skill surface; superseded by effort-* on the AGENTS.md surface",
+    "superseded-effort-medium-skill": "same as above",
+    "superseded-effort-high-skill": "aborted mid-batch when the skill surface was demoted; published as raw data only"
   }
 }

@@ -18,15 +18,25 @@ import { join, resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { barChart, emptyChart } from "./lib/chart.mjs";
 import { signTest } from "./sweep-report.mjs";
+// Read the PUBLISHED record, not the working directory. bench/results/ is gitignored, so
+// generating a chart from it meant a clean checkout could not reproduce the chart - CI
+// proved that by regenerating them empty and calling the committed ones stale.
+import { readManifest, studySummary, studyIds } from "../bench/lib/published.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = join(REPO, "assets");
-const RESULTS = join(REPO, "bench", "results");
 
-const THREAD_TAG = "thread-terra";
+const THREAD_STUDY = "mechanism-thread";
 const EFFORT_ORDER = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 const readJson = (p) => JSON.parse(readFileSync(p, "utf8"));
+
+/** bench/headline.json decides which studies may produce a published claim. */
+function allowedStudies() {
+  const gate = join(REPO, "bench", "headline.json");
+  return new Set(existsSync(gate) ? (readJson(gate).studies ?? []) : []);
+}
+const allowedStudy = (id) => allowedStudies().has(id);
 // One minus sign everywhere. Mixing U+2212 in a table with an ASCII hyphen in the
 // confidence interval beside it looks like two different measurements.
 const MINUS = "−";
@@ -265,9 +275,8 @@ export function renderPrefix(lang = "en") {
 
 export function renderSurfaces(lang = "en") {
   const t = STRINGS[lang];
-  const file = join(RESULTS, THREAD_TAG, "summary.json");
-  if (!existsSync(file)) return emptyChart(t.surfaces.emptyTitle, t.surfaces.empty);
-  const s = readJson(file);
+  const s = allowedStudy(THREAD_STUDY) ? studySummary(THREAD_STUDY) : null;
+  if (!s) return emptyChart(t.surfaces.emptyTitle, t.surfaces.empty);
   const base = s.arms.find((a) => a.kind === "baseline");
   const order = ["baseline", "skill", "full", "lean"].filter((n) => s.arms.some((a) => a.name === n));
 
@@ -312,13 +321,11 @@ export function renderSurfaces(lang = "en") {
 // --------------------------------------------------------------- effort chart
 
 export function readEffortBatches() {
-  if (!existsSync(RESULTS)) return [];
   const out = [];
-  for (const dir of readdirSync(RESULTS)) {
-    if (!dir.startsWith("eff-")) continue;
-    const file = join(RESULTS, dir, "summary.json");
-    if (!existsSync(file)) continue;
-    const s = readJson(file);
+  const manifest = readManifest();
+  for (const dir of studyIds(manifest).filter((id) => id.startsWith("effort-") && allowedStudy(id))) {
+    const s = studySummary(dir, manifest);
+    if (!s) continue;
     const base = s.arms.find((a) => a.kind === "baseline");
     const eco = s.arms.find((a) => a.kind === "agents");
     if (!base || !eco) continue;
@@ -390,16 +397,15 @@ export function renderEfforts(lang = "en") {
  * reader can compare the tables directly.
  */
 export function readModelBatches() {
-  if (!existsSync(RESULTS)) return [];
   const out = [];
-  // The thread study IS the terra row: same study definition, same block, same effort,
-  // just a larger n. Re-running it under an `mdl-` tag would spend tokens to reproduce a
+  const manifest = readManifest();
+  // The thread study IS the terra row: same study definition, same block, same effort, just
+  // a larger n. Re-running it under a model- id would spend tokens to reproduce a
   // measurement that already exists, so it is read in place and carries its own n.
-  for (const dir of [...readdirSync(RESULTS).filter((d) => d.startsWith("mdl-")), THREAD_TAG]) {
-    if (dir !== THREAD_TAG && !dir.startsWith("mdl-")) continue;
-    const file = join(RESULTS, dir, "summary.json");
-    if (!existsSync(file)) continue;
-    const s = readJson(file);
+  const ids = [...studyIds(manifest).filter((id) => id.startsWith("model-")), THREAD_STUDY].filter(allowedStudy);
+  for (const dir of ids) {
+    const s = studySummary(dir, manifest);
+    if (!s) continue;
     const base = s.arms.find((a) => a.kind === "baseline");
     // The thread study carries two AGENTS.md arms. The shipped one is `lean`; taking
     // whichever came first would have quietly reported the full block as the model's row.
@@ -472,8 +478,7 @@ export function headlineFacts() {
       }
     : null;
 
-  const threadFile = join(RESULTS, THREAD_TAG, "summary.json");
-  const s = allowed.has(THREAD_TAG) && existsSync(threadFile) ? readJson(threadFile) : null;
+  const s = allowedStudy(THREAD_STUDY) ? studySummary(THREAD_STUDY) : null;
   const winnerName = s ? (s.arms.some((a) => a.name === "lean") ? "lean" : "agents") : null;
   const winnerArm = s ? s.arms.find((a) => a.name === winnerName) : null;
   const baseArm = s ? s.arms.find((a) => a.kind === "baseline") : null;
@@ -492,7 +497,7 @@ export function headlineFacts() {
         }
       : null;
 
-  const effortRows = readEffortBatches().filter((b) => allowed.has(`eff-${b.effort}`));
+  const effortRows = readEffortBatches();
   const efforts = effortRows.length
     ? {
         n: effortRows.length,
@@ -505,10 +510,7 @@ export function headlineFacts() {
       }
     : null;
 
-  // The terra row comes from the thread study, so its gate key is that study's tag.
-  const modelRows = readModelBatches().filter(
-    (b) => allowed.has(`mdl-${b.model}`) || allowed.has(THREAD_TAG),
-  );
+  const modelRows = readModelBatches();
   const models = modelRows.length
     ? {
         n: modelRows.length,
@@ -599,13 +601,9 @@ export function renderAudit(lang = "en") {
  * studies in this project turned out to have compared a baseline against itself.
  */
 export function renderResults(lang = "en") {
-  const gate = join(REPO, "bench", "headline.json");
-  const allowed = new Set(existsSync(gate) ? (readJson(gate).studies ?? []) : []);
   const tr = lang === "tr";
-
-  const threadFile = join(RESULTS, THREAD_TAG, "summary.json");
-  const thread = allowed.has(THREAD_TAG) && existsSync(threadFile) ? readJson(threadFile) : null;
-  const efforts = readEffortBatches().filter((b) => allowed.has(`eff-${b.effort}`));
+  const thread = allowedStudy(THREAD_STUDY) ? studySummary(THREAD_STUDY) : null;
+  const efforts = readEffortBatches();
   const prefixFile = join(ASSETS, "data", "prefix.json");
   const prefix = existsSync(prefixFile) ? readJson(prefixFile) : null;
 
@@ -755,7 +753,7 @@ export function renderResults(lang = "en") {
     );
   }
 
-  const models = readModelBatches().filter((b) => allowed.has(`mdl-${b.model}`) || allowed.has(THREAD_TAG));
+  const models = readModelBatches();
   if (models.length) {
     const sign = signTest(models.map((b) => b.delta));
     const deltas = models.map((b) => b.delta);
